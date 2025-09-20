@@ -820,7 +820,10 @@ public:
 
 namespace craby {
   namespace crabytest {
+    struct NullableNumber;
+    struct NullableString;
     struct SubObject;
+    struct NullableSubObject;
     struct TestObject;
     enum class MyEnum : ::std::uint8_t;
   }
@@ -828,10 +831,30 @@ namespace craby {
 
 namespace craby {
 namespace crabytest {
+#ifndef CXXBRIDGE1_STRUCT_craby$crabytest$NullableNumber
+#define CXXBRIDGE1_STRUCT_craby$crabytest$NullableNumber
+struct NullableNumber final {
+  bool null CXX_DEFAULT_VALUE(false);
+  double val CXX_DEFAULT_VALUE(0);
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_craby$crabytest$NullableNumber
+
+#ifndef CXXBRIDGE1_STRUCT_craby$crabytest$NullableString
+#define CXXBRIDGE1_STRUCT_craby$crabytest$NullableString
+struct NullableString final {
+  bool null CXX_DEFAULT_VALUE(false);
+  ::rust::String val;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_craby$crabytest$NullableString
+
 #ifndef CXXBRIDGE1_STRUCT_craby$crabytest$SubObject
 #define CXXBRIDGE1_STRUCT_craby$crabytest$SubObject
 struct SubObject final {
-  ::rust::String a;
+  ::craby::crabytest::NullableString a;
   double b CXX_DEFAULT_VALUE(0);
   bool c CXX_DEFAULT_VALUE(false);
 
@@ -839,13 +862,23 @@ struct SubObject final {
 };
 #endif // CXXBRIDGE1_STRUCT_craby$crabytest$SubObject
 
+#ifndef CXXBRIDGE1_STRUCT_craby$crabytest$NullableSubObject
+#define CXXBRIDGE1_STRUCT_craby$crabytest$NullableSubObject
+struct NullableSubObject final {
+  bool null CXX_DEFAULT_VALUE(false);
+  ::craby::crabytest::SubObject val;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_craby$crabytest$NullableSubObject
+
 #ifndef CXXBRIDGE1_STRUCT_craby$crabytest$TestObject
 #define CXXBRIDGE1_STRUCT_craby$crabytest$TestObject
 struct TestObject final {
   ::rust::String foo;
   double bar CXX_DEFAULT_VALUE(0);
   bool baz CXX_DEFAULT_VALUE(false);
-  ::craby::crabytest::SubObject sub;
+  ::craby::crabytest::NullableSubObject sub;
 
   using IsRelocatable = ::std::true_type;
 };
@@ -872,6 +905,8 @@ void craby$crabytest$cxxbridge1$craby_test_object_method(::craby::crabytest::Tes
 void craby$crabytest$cxxbridge1$craby_test_array_method(::rust::Vec<double> *arg, ::rust::Vec<double> *return$) noexcept;
 
 void craby$crabytest$cxxbridge1$craby_test_enum_method(::craby::crabytest::MyEnum arg, ::rust::String *return$) noexcept;
+
+void craby$crabytest$cxxbridge1$craby_test_nullable_method(::craby::crabytest::NullableNumber *arg, ::craby::crabytest::NullableNumber *return$) noexcept;
 
 ::rust::repr::PtrLen craby$crabytest$cxxbridge1$craby_test_promise_method(double arg, double *return$) noexcept;
 } // extern "C"
@@ -907,6 +942,13 @@ bool booleanMethod(bool arg) noexcept {
 ::rust::String enumMethod(::craby::crabytest::MyEnum arg) noexcept {
   ::rust::MaybeUninit<::rust::String> return$;
   craby$crabytest$cxxbridge1$craby_test_enum_method(arg, &return$.value);
+  return ::std::move(return$.value);
+}
+
+::craby::crabytest::NullableNumber nullableMethod(::craby::crabytest::NullableNumber arg) noexcept {
+  ::rust::ManuallyDrop<::craby::crabytest::NullableNumber> arg$(::std::move(arg));
+  ::rust::MaybeUninit<::craby::crabytest::NullableNumber> return$;
+  craby$crabytest$cxxbridge1$craby_test_nullable_method(&arg$.value, &return$.value);
   return ::std::move(return$.value);
 }
 

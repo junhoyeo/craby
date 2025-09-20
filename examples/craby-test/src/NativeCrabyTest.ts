@@ -5,11 +5,11 @@ export interface TestObject {
   foo: string;
   bar: number;
   baz: boolean;
-  sub: SubObject;
+  sub: SubObject | null;
 }
 
 export interface SubObject {
-  a?: string;
+  a: string | null;
   b: number;
   c: boolean;
 }
@@ -27,6 +27,7 @@ export interface Spec extends TurboModule {
   objectMethod(arg: TestObject): TestObject;
   arrayMethod(arg: number[]): number[];
   enumMethod(arg: MyEnum): string;
+  nullableMethod(arg: number | null): number | null;
   promiseMethod(arg: number): Promise<number>;
 }
 

@@ -8,6 +8,16 @@ use crate::{
     utils::indent_str,
 };
 
+#[derive(Debug)]
+pub struct CxxFromJs {
+    pub expr: String,
+}
+
+#[derive(Debug)]
+pub struct CxxToJs {
+    pub expr: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct CxxMethod {
     /// Method name
@@ -31,46 +41,8 @@ pub struct CxxMethod {
     pub impl_func: String,
 }
 
-pub trait ToCxxType {
-    /// Returns the cxx type for the `TypeAnnotation`.
-    fn to_cxx_type(&self, mod_name: &String) -> Result<String, anyhow::Error>;
-}
-
-pub trait ToCxxBridging {
-    /// Returns the cxx `fromJs` for the `TypeAnnotation`.
-    ///
-    /// ```cpp
-    /// facebook::react::bridging::fromJs<T>(rt, value, callInvoker)
-    /// ```
-    fn to_cxx(&self, mod_name: &String, ident: &String) -> Result<String, anyhow::Error>;
-    /// Returns the cxx `toJs` for the `TypeAnnotation`.
-    ///
-    /// ```cpp
-    /// react::bridging::toJs(rt, value)
-    /// ```
-    fn to_js(&self, ident: &String) -> Result<String, anyhow::Error>;
-}
-
-pub trait ToCxxMethod {
-    /// Returns the cxx function's metadata and implementation for the `FunctionSpec`.
-    ///
-    /// ```cpp
-    /// // Metadata (args count, function pointer)
-    /// MethodMetadata{1, &CxxMyTestModule::myFunc}
-    ///
-    /// // Function implementation
-    /// jsi::Value CxxMyTestModule::myFunc(jsi::Runtime &rt,
-    ///                                    react::TurboModule &turboModule,
-    ///                                    const jsi::Value args[],
-    ///                                    size_t count) {
-    ///     // Implementation here
-    /// }
-    /// ```
-    fn to_cxx_method(&self, mod_name: &String) -> Result<CxxMethod, anyhow::Error>;
-}
-
-impl ToCxxType for TypeAnnotation {
-    fn to_cxx_type(&self, mod_name: &String) -> Result<String, anyhow::Error> {
+impl TypeAnnotation {
+    pub fn as_cxx_type(&self, mod_name: &String) -> Result<String, anyhow::Error> {
         let cxx_type = match self {
             // Boolean type
             TypeAnnotation::BooleanTypeAnnotation => "bool".to_string(),
@@ -85,11 +57,11 @@ impl ToCxxType for TypeAnnotation {
             // String types
             TypeAnnotation::StringTypeAnnotation
             | TypeAnnotation::StringLiteralTypeAnnotation { .. }
-            | TypeAnnotation::StringLiteralUnionTypeAnnotation { .. } => "std::string".to_string(),
+            | TypeAnnotation::StringLiteralUnionTypeAnnotation { .. } => "rust::String".to_string(),
 
             // Array type
             TypeAnnotation::ArrayTypeAnnotation { element_type } => {
-                format!("rust::Vec<{}>", element_type.to_cxx_type(mod_name)?)
+                format!("rust::Vec<{}>", element_type.as_cxx_type(mod_name)?)
             }
 
             // Enum
@@ -100,6 +72,62 @@ impl ToCxxType for TypeAnnotation {
             // Type alias
             TypeAnnotation::TypeAliasTypeAnnotation { name } => {
                 format!("craby::{}::{}", flat_case(mod_name), name)
+            }
+
+            // Nullable type
+            TypeAnnotation::NullableTypeAnnotation { type_annotation } => {
+                let cxx_struct = match &**type_annotation {
+                    TypeAnnotation::BooleanTypeAnnotation => "NullableBoolean".to_string(),
+                    TypeAnnotation::NumberTypeAnnotation
+                    | TypeAnnotation::FloatTypeAnnotation
+                    | TypeAnnotation::DoubleTypeAnnotation
+                    | TypeAnnotation::Int32TypeAnnotation
+                    | TypeAnnotation::NumberLiteralTypeAnnotation { .. } => {
+                        "NullableNumber".to_string()
+                    }
+                    TypeAnnotation::StringTypeAnnotation
+                    | TypeAnnotation::StringLiteralTypeAnnotation { .. }
+                    | TypeAnnotation::StringLiteralUnionTypeAnnotation { .. } => {
+                        "NullableString".to_string()
+                    }
+                    TypeAnnotation::TypeAliasTypeAnnotation { name } => format!("Nullable{}", name),
+                    TypeAnnotation::EnumDeclaration { name, .. } => format!("Nullable{}", name),
+                    TypeAnnotation::ArrayTypeAnnotation { element_type } => match &**element_type {
+                        TypeAnnotation::BooleanTypeAnnotation => "NullableBooleanArray".to_string(),
+                        TypeAnnotation::NumberTypeAnnotation
+                        | TypeAnnotation::FloatTypeAnnotation
+                        | TypeAnnotation::DoubleTypeAnnotation
+                        | TypeAnnotation::Int32TypeAnnotation
+                        | TypeAnnotation::NumberLiteralTypeAnnotation { .. } => {
+                            "NullableNumberArray".to_string()
+                        }
+                        TypeAnnotation::StringTypeAnnotation
+                        | TypeAnnotation::StringLiteralTypeAnnotation { .. }
+                        | TypeAnnotation::StringLiteralUnionTypeAnnotation { .. } => {
+                            "NullableStringArray".to_string()
+                        }
+                        TypeAnnotation::TypeAliasTypeAnnotation { name } => {
+                            format!("Nullable{}Array", name)
+                        }
+                        TypeAnnotation::EnumDeclaration { name, .. } => {
+                            format!("Nullable{}Array", name)
+                        }
+                        _ => {
+                            return Err(anyhow::anyhow!(
+                                "[as_cxx_type] Unsupported type annotation for nullable array type: {:?}",
+                                element_type
+                            ))
+                        }
+                    },
+                    _ => {
+                        return Err(anyhow::anyhow!(
+                            "[as_cxx_type] Unsupported type annotation for nullable type: {:?}",
+                            type_annotation
+                        ))
+                    }
+                };
+
+                format!("craby::{}::{}", flat_case(mod_name), cxx_struct)
             }
 
             // Unsupported types with message
@@ -117,16 +145,99 @@ impl ToCxxType for TypeAnnotation {
             }
 
             // Unsupported types
-            _ => return Err(anyhow::anyhow!("Unsupported type annotation: {:?}", self)),
+            _ => {
+                return Err(anyhow::anyhow!(
+                    "[as_cxx_type] Unsupported type annotation: {:?}",
+                    self
+                ))
+            }
         };
 
         Ok(cxx_type)
     }
-}
 
-impl ToCxxBridging for TypeAnnotation {
-    fn to_cxx(&self, mod_name: &String, ident: &String) -> Result<String, anyhow::Error> {
-        let to_cxx = match &*self {
+    pub fn as_cxx_default_val(&self, mod_name: &String) -> Result<String, anyhow::Error> {
+        let default_val = match self {
+            // Boolean type
+            TypeAnnotation::BooleanTypeAnnotation => "false".to_string(),
+
+            // Number types
+            TypeAnnotation::NumberTypeAnnotation
+            | TypeAnnotation::FloatTypeAnnotation
+            | TypeAnnotation::DoubleTypeAnnotation
+            | TypeAnnotation::Int32TypeAnnotation
+            | TypeAnnotation::NumberLiteralTypeAnnotation { .. } => "0.0".to_string(),
+
+            // String types
+            TypeAnnotation::StringTypeAnnotation
+            | TypeAnnotation::StringLiteralTypeAnnotation { .. }
+            | TypeAnnotation::StringLiteralUnionTypeAnnotation { .. } => {
+                "rust::String()".to_string()
+            }
+
+            // Array type
+            TypeAnnotation::ArrayTypeAnnotation { element_type } => {
+                format!("rust::Vec<{}>()", element_type.as_cxx_type(mod_name)?)
+            }
+
+            // Enum
+            TypeAnnotation::EnumDeclaration { members, .. } => {
+                let enum_type = self.as_cxx_type(mod_name)?;
+                let first_member = members
+                    .as_ref()
+                    .expect("enum should have at least one member")
+                    .first()
+                    .clone()
+                    .expect("enum should have at least one member");
+
+                format!("{}::{}", enum_type, first_member.name)
+            }
+
+            // Type alias
+            TypeAnnotation::TypeAliasTypeAnnotation { .. } => {
+                let cxx_type = self.as_cxx_type(mod_name)?;
+                format!("{}{{}}", cxx_type)
+            }
+
+            // Nullable type
+            TypeAnnotation::NullableTypeAnnotation { .. } => {
+                let cxx_type = self.as_cxx_type(mod_name)?;
+                let default_val = self.as_cxx_default_val(mod_name)?;
+
+                formatdoc! {
+                    r#"
+                    {cxx_type} {{
+                        val: {default_val},
+                        null: true,
+                    }}
+                    "#,
+                    cxx_type = cxx_type,
+                    default_val = default_val,
+                }
+            }
+
+            _ => {
+                return Err(anyhow::anyhow!(
+                    "[as_cxx_default_val] Unsupported type annotation: {:?}",
+                    self
+                ))
+            }
+        };
+
+        Ok(default_val)
+    }
+
+    /// Returns the cxx `fromJs` for the `TypeAnnotation`.
+    ///
+    /// ```cpp
+    /// facebook::react::bridging::fromJs<T>(rt, value, callInvoker)
+    /// ```
+    pub fn as_cxx_from_js(
+        &self,
+        mod_name: &String,
+        ident: &String,
+    ) -> Result<CxxFromJs, anyhow::Error> {
+        let from_js_expr = match &*self {
             // Boolean type
             TypeAnnotation::BooleanTypeAnnotation
             // Number types
@@ -144,18 +255,25 @@ impl ToCxxBridging for TypeAnnotation {
             // Enum type
             | TypeAnnotation::EnumDeclaration { .. }
             // Type alias (Object)
-            | TypeAnnotation::TypeAliasTypeAnnotation { .. } => format!(
+            | TypeAnnotation::TypeAliasTypeAnnotation { .. }
+            // Nullable type
+            | TypeAnnotation::NullableTypeAnnotation { .. } => format!(
                 "react::bridging::fromJs<{}>(rt, {}, callInvoker)",
-                self.to_cxx_type(mod_name)?, ident
+                self.as_cxx_type(mod_name)?, ident
             ),
-            _ => return Err(anyhow::anyhow!("Unsupported type annotation: {:?}", self)),
+            _ => return Err(anyhow::anyhow!("[as_cxx_from_js] Unsupported type annotation: {:?}", self)),
         };
 
-        Ok(to_cxx)
+        Ok(CxxFromJs { expr: from_js_expr })
     }
 
-    fn to_js(&self, ident: &String) -> Result<String, anyhow::Error> {
-        let to_js = match &*self {
+    /// Returns the cxx `toJs` for the `TypeAnnotation`.
+    ///
+    /// ```cpp
+    /// react::bridging::toJs(rt, value)
+    /// ```
+    pub fn as_cxx_to_js(&self, ident: &String) -> Result<CxxToJs, anyhow::Error> {
+        let to_js_expr = match &*self {
             // Boolean type
             TypeAnnotation::BooleanTypeAnnotation
             // Number types
@@ -164,29 +282,29 @@ impl ToCxxBridging for TypeAnnotation {
             | TypeAnnotation::DoubleTypeAnnotation { .. }
             | TypeAnnotation::Int32TypeAnnotation { .. }
             | TypeAnnotation::NumberLiteralTypeAnnotation { .. }
+            // String types
+            | TypeAnnotation::StringTypeAnnotation { .. }
+            | TypeAnnotation::StringLiteralTypeAnnotation { .. }
+            | TypeAnnotation::StringLiteralUnionTypeAnnotation { .. }
             // Array type
             | TypeAnnotation::ArrayTypeAnnotation { .. }
             // Enum type
             | TypeAnnotation::EnumDeclaration { .. }
             // Type alias (Object)
-            | TypeAnnotation::TypeAliasTypeAnnotation { .. } => format!("react::bridging::toJs(rt, {})", ident),
-
-            // String types
-            | TypeAnnotation::StringTypeAnnotation { .. }
-            | TypeAnnotation::StringLiteralTypeAnnotation { .. }
-            | TypeAnnotation::StringLiteralUnionTypeAnnotation { .. } => format!("react::bridging::toJs(rt, std::string({}))", ident),
-
+            | TypeAnnotation::TypeAliasTypeAnnotation { .. }
+            // Nullable type
+            | TypeAnnotation::NullableTypeAnnotation { .. } => format!("react::bridging::toJs(rt, {})", ident),
             // Promise type
             TypeAnnotation::PromiseTypeAnnotation { .. } => format!("react::bridging::toJs(rt, {})", ident),
-            _ => return Err(anyhow::anyhow!("Unsupported type annotation: {:?}", self)),
+            _ => return Err(anyhow::anyhow!("[as_cxx_to_js] Unsupported type annotation: {:?}", self)),
         };
 
-        Ok(to_js)
+        Ok(CxxToJs { expr: to_js_expr })
     }
 }
 
-impl ToCxxMethod for FunctionSpec {
-    fn to_cxx_method(&self, mod_name: &String) -> Result<CxxMethod, anyhow::Error> {
+impl FunctionSpec {
+    pub fn as_cxx_method(&self, mod_name: &String) -> Result<CxxMethod, anyhow::Error> {
         let (args_decls, invoke_stmts) = if let TypeAnnotation::FunctionTypeAnnotation {
             return_type_annotation,
             params,
@@ -200,9 +318,9 @@ impl ToCxxMethod for FunctionSpec {
             for (idx, param) in params.iter().enumerate() {
                 let arg_ref = cxx_arg_ref(idx);
                 let arg_var = cxx_arg_var(idx);
-                let from_js = param.type_annotation.to_cxx(mod_name, &arg_ref)?;
+                let from_js = param.type_annotation.as_cxx_from_js(mod_name, &arg_ref)?;
                 args.push(arg_var.clone());
-                args_decls.push(format!("auto {} = {};", arg_var, from_js));
+                args_decls.push(format!("auto {} = {};", arg_var, from_js.expr));
             }
 
             let invoke_stmts = match &**return_type_annotation {
@@ -249,8 +367,8 @@ impl ToCxxMethod for FunctionSpec {
                         fn_name = self.name,
                         fn_args = fn_args,
                         flat_name = flat_case(mod_name),
-                        ret_type = element_type.to_cxx_type(mod_name)?,
-                        ret = return_type_annotation.to_js(&"promise".to_string())?,
+                        ret_type = element_type.as_cxx_type(mod_name)?,
+                        ret = return_type_annotation.as_cxx_to_js(&"promise".to_string())?.expr,
                     }
                 }
                 _ => {
@@ -268,7 +386,7 @@ impl ToCxxMethod for FunctionSpec {
                         flat_name = flat_case(mod_name),
                         fn_name = self.name,
                         fn_args = args.join(", "),
-                        ret = return_type_annotation.to_js(&"ret".to_string())?,
+                        ret = return_type_annotation.as_cxx_to_js(&"ret".to_string())?.expr,
                     }
                 }
             };
@@ -337,13 +455,11 @@ pub mod template {
     use crate::{
         constants::cxx_mod_cls_name,
         types::{
-            schema::{Alias, Enum},
+            schema::{Alias, Enum, TypeAnnotation},
             types::CodegenResult,
         },
         utils::indent_str,
     };
-
-    use super::ToCxxBridging;
 
     /// Returns the complete cxx TurboModule implementation source file.
     pub fn mod_cxx(codegen_res: &Vec<CodegenResult>) -> String {
@@ -521,18 +637,14 @@ pub mod template {
     /// Returns the complete cxx JSI bridging header file.
     pub fn cxx_bridging_h(codegen_res: &Vec<CodegenResult>) -> String {
         let mut has_template = false;
-        let bridging_templates = codegen_res
-            .iter()
-            .map(|res| {
-                has_template = has_template || !res.cxx_bridging_templates.is_empty();
-                res.cxx_bridging_templates
-                    .iter()
-                    .map(|template| template.clone())
-                    .collect::<Vec<_>>()
-            })
-            .flatten()
-            .collect::<Vec<_>>()
-            .join("\n\n");
+        let mut bridging_templates = vec![];
+
+        codegen_res.iter().for_each(|res| {
+            has_template = has_template || !res.cxx_bridging_templates.is_empty();
+            res.cxx_bridging_templates.iter().for_each(|template| {
+                bridging_templates.push(template.clone());
+            });
+        });
 
         formatdoc! {
             r#"
@@ -546,6 +658,18 @@ pub mod template {
 
             namespace facebook {{
             namespace react {{
+
+            template <>
+            struct Bridging<rust::String> {{
+              static rust::String fromJs(jsi::Runtime& rt, const jsi::Value &value, std::shared_ptr<CallInvoker> callInvoker) {{
+                auto str = value.asString(rt).utf8(rt);
+                return rust::String(str);
+              }}
+
+              static jsi::Value toJs(jsi::Runtime& rt, const rust::String& value) {{
+                return react::bridging::toJs(rt, std::string(value));
+              }}
+            }};
 
             template <typename T>
             struct Bridging<rust::Vec<T>> {{
@@ -577,7 +701,7 @@ pub mod template {
             {bridging_templates}
             }} // namespace react
             }} // namespace facebook"#,
-            bridging_templates = if has_template { format!("\n{}\n", bridging_templates) } else { "".to_string() },
+            bridging_templates = if has_template { format!("\n{}\n", bridging_templates.join("\n\n")) } else { "".to_string() },
         }
     }
 
@@ -606,10 +730,10 @@ pub mod template {
             .try_for_each(|prop| -> Result<(), anyhow::Error> {
                 let ident = format!("obj${}", prop.name);
                 let converted_ident = format!("_{}", ident);
-                let from_js = prop.type_annotation.to_cxx(&mod_name, &ident)?;
+                let from_js = prop.type_annotation.as_cxx_from_js(&mod_name, &ident)?;
                 let to_js = prop
                     .type_annotation
-                    .to_js(&format!("value.{}", prop.name))?;
+                    .as_cxx_to_js(&format!("value.{}", prop.name))?;
 
                 // ```cpp
                 // auto obj$name = obj.getProperty(rt, "name");
@@ -627,12 +751,12 @@ pub mod template {
                 // ```cpp
                 // auto _obj$name = react::bridging::fromJs<T>(rt, value.name, callInvoker);
                 // ```
-                let from_js_stmt = format!("auto {} = {};", converted_ident, from_js);
+                let from_js_stmt = format!("auto {} = {};", converted_ident, from_js.expr);
 
                 // ```cpp
                 // auto _obj$name = react::bridging::toJs(rt, value.name);
                 // ```
-                let to_js_stmt = format!("auto {} = {};", converted_ident, to_js);
+                let to_js_stmt = format!("auto {} = {};", converted_ident, to_js.expr);
 
                 get_props.push(get_prop);
                 from_js_stmts.push(from_js_stmt);
@@ -843,6 +967,43 @@ pub mod template {
         };
 
         let template = cxx_bridging_template(&enum_namespace, from_js, to_js);
+
+        Ok(template)
+    }
+
+    pub fn cxx_nullable_bridging_template(
+        mod_name: &String,
+        nullable_namespace: &String,
+        type_annotation: &TypeAnnotation,
+    ) -> Result<String, anyhow::Error> {
+        let origin_namespace = type_annotation.as_cxx_type(mod_name)?;
+        let default_value = type_annotation.as_cxx_default_val(mod_name)?;
+
+        let from_js_impl = formatdoc! {
+            r#"
+            if (value.isNull()) {{
+              return {nullable_namespace}{{true, {default_value}}};
+            }}
+
+            auto val = react::bridging::fromJs<{origin_namespace}>(rt, value, callInvoker);
+            auto ret = {nullable_namespace}{{false, val}};
+
+            return ret;"#,
+            origin_namespace =  origin_namespace,
+            nullable_namespace = nullable_namespace,
+            default_value = default_value,
+        };
+
+        let to_js_impl = formatdoc! {
+            r#"
+            if (value.null) {{
+              return jsi::Value::null();
+            }}
+
+            return react::bridging::toJs(rt, value.val);"#,
+        };
+
+        let template = cxx_bridging_template(&nullable_namespace, from_js_impl, to_js_impl);
 
         Ok(template)
     }
