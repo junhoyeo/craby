@@ -1,4 +1,5 @@
 #pragma once
+#include "signals.h"
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -11,6 +12,9 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#if __cplusplus >= 201703L
+#include <string_view>
+#endif
 #if __cplusplus >= 202002L
 #include <ranges>
 #endif
@@ -114,6 +118,56 @@ private:
   std::array<std::uintptr_t, 3> repr;
 };
 #endif // CXXBRIDGE1_RUST_STRING
+
+#ifndef CXXBRIDGE1_RUST_STR
+#define CXXBRIDGE1_RUST_STR
+class Str final {
+public:
+  Str() noexcept;
+  Str(const String &) noexcept;
+  Str(const std::string &);
+  Str(const char *);
+  Str(const char *, std::size_t);
+
+  Str &operator=(const Str &) & noexcept = default;
+
+  explicit operator std::string() const;
+#if __cplusplus >= 201703L
+  explicit operator std::string_view() const;
+#endif
+
+  const char *data() const noexcept;
+  std::size_t size() const noexcept;
+  std::size_t length() const noexcept;
+  bool empty() const noexcept;
+
+  Str(const Str &) noexcept = default;
+  ~Str() noexcept = default;
+
+  using iterator = const char *;
+  using const_iterator = const char *;
+  const_iterator begin() const noexcept;
+  const_iterator end() const noexcept;
+  const_iterator cbegin() const noexcept;
+  const_iterator cend() const noexcept;
+
+  bool operator==(const Str &) const noexcept;
+  bool operator!=(const Str &) const noexcept;
+  bool operator<(const Str &) const noexcept;
+  bool operator<=(const Str &) const noexcept;
+  bool operator>(const Str &) const noexcept;
+  bool operator>=(const Str &) const noexcept;
+
+  void swap(Str &) noexcept;
+
+private:
+  class uninit;
+  Str(uninit) noexcept;
+  friend impl<Str>;
+
+  std::array<std::uintptr_t, 2> repr;
+};
+#endif // CXXBRIDGE1_RUST_STR
 
 #ifndef CXXBRIDGE1_RUST_SLICE
 #define CXXBRIDGE1_RUST_SLICE
@@ -758,6 +812,9 @@ namespace craby {
     enum class MyEnum : ::std::uint8_t;
     enum class SwitchState : ::std::uint8_t;
   }
+  namespace signals {
+    using SignalManager = ::craby::signals::SignalManager;
+  }
 }
 
 namespace craby {
@@ -832,29 +889,31 @@ enum class SwitchState : ::std::uint8_t {
 };
 #endif // CXXBRIDGE1_ENUM_craby$bridging$SwitchState
 
-double add(double a, double b) noexcept;
+double add(::std::size_t id_, double a, double b) noexcept;
 
-double subtract(double a, double b) noexcept;
+double subtract(::std::size_t id_, double a, double b) noexcept;
 
-double multiply(double a, double b) noexcept;
+double multiply(::std::size_t id_, double a, double b) noexcept;
 
-double divide(double a, double b) noexcept;
+double divide(::std::size_t id_, double a, double b) noexcept;
 
-double numericMethod(double arg) noexcept;
+double numericMethod(::std::size_t id_, double arg) noexcept;
 
-bool booleanMethod(bool arg) noexcept;
+bool booleanMethod(::std::size_t id_, bool arg) noexcept;
 
-::rust::String stringMethod(::rust::String arg) noexcept;
+::rust::String stringMethod(::std::size_t id_, ::rust::String arg) noexcept;
 
-::craby::bridging::TestObject objectMethod(::craby::bridging::TestObject arg) noexcept;
+::craby::bridging::TestObject objectMethod(::std::size_t id_, ::craby::bridging::TestObject arg) noexcept;
 
-::rust::Vec<double> arrayMethod(::rust::Vec<double> arg) noexcept;
+::rust::Vec<double> arrayMethod(::std::size_t id_, ::rust::Vec<double> arg) noexcept;
 
-::rust::String enumMethod(::craby::bridging::MyEnum arg0, ::craby::bridging::SwitchState arg1) noexcept;
+::rust::String enumMethod(::std::size_t id_, ::craby::bridging::MyEnum arg0, ::craby::bridging::SwitchState arg1) noexcept;
 
-::craby::bridging::NullableNumber nullableMethod(::craby::bridging::NullableNumber arg) noexcept;
+::craby::bridging::NullableNumber nullableMethod(::std::size_t id_, ::craby::bridging::NullableNumber arg) noexcept;
 
-double promiseMethod(double arg);
+double promiseMethod(::std::size_t id_, double arg);
+
+void triggerSignal(::std::size_t id_) noexcept;
 } // namespace bridging
 } // namespace craby
 

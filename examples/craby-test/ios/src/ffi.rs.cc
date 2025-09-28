@@ -1,3 +1,4 @@
+#include "signals.h"
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -11,11 +12,15 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#if __cplusplus >= 201703L
+#include <string_view>
+#endif
 #if __cplusplus >= 202002L
 #include <ranges>
 #endif
 
 #ifdef __GNUC__
+#pragma GCC diagnostic ignored "-Wmissing-declarations"
 #pragma GCC diagnostic ignored "-Wshadow"
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wdollar-in-identifier-extension"
@@ -116,6 +121,56 @@ private:
   std::array<std::uintptr_t, 3> repr;
 };
 #endif // CXXBRIDGE1_RUST_STRING
+
+#ifndef CXXBRIDGE1_RUST_STR
+#define CXXBRIDGE1_RUST_STR
+class Str final {
+public:
+  Str() noexcept;
+  Str(const String &) noexcept;
+  Str(const std::string &);
+  Str(const char *);
+  Str(const char *, std::size_t);
+
+  Str &operator=(const Str &) & noexcept = default;
+
+  explicit operator std::string() const;
+#if __cplusplus >= 201703L
+  explicit operator std::string_view() const;
+#endif
+
+  const char *data() const noexcept;
+  std::size_t size() const noexcept;
+  std::size_t length() const noexcept;
+  bool empty() const noexcept;
+
+  Str(const Str &) noexcept = default;
+  ~Str() noexcept = default;
+
+  using iterator = const char *;
+  using const_iterator = const char *;
+  const_iterator begin() const noexcept;
+  const_iterator end() const noexcept;
+  const_iterator cbegin() const noexcept;
+  const_iterator cend() const noexcept;
+
+  bool operator==(const Str &) const noexcept;
+  bool operator!=(const Str &) const noexcept;
+  bool operator<(const Str &) const noexcept;
+  bool operator<=(const Str &) const noexcept;
+  bool operator>(const Str &) const noexcept;
+  bool operator>=(const Str &) const noexcept;
+
+  void swap(Str &) noexcept;
+
+private:
+  class uninit;
+  Str(uninit) noexcept;
+  friend impl<Str>;
+
+  std::array<std::uintptr_t, 2> repr;
+};
+#endif // CXXBRIDGE1_RUST_STR
 
 #ifndef CXXBRIDGE1_RUST_SLICE
 #define CXXBRIDGE1_RUST_SLICE
@@ -828,6 +883,9 @@ namespace craby {
     enum class MyEnum : ::std::uint8_t;
     enum class SwitchState : ::std::uint8_t;
   }
+  namespace signals {
+    using SignalManager = ::craby::signals::SignalManager;
+  }
 }
 
 namespace craby {
@@ -903,95 +961,117 @@ enum class SwitchState : ::std::uint8_t {
 #endif // CXXBRIDGE1_ENUM_craby$bridging$SwitchState
 
 extern "C" {
-double craby$bridging$cxxbridge1$calculator_add(double a, double b) noexcept;
+double craby$bridging$cxxbridge1$calculator_add(::std::size_t id_, double a, double b) noexcept;
 
-double craby$bridging$cxxbridge1$calculator_subtract(double a, double b) noexcept;
+double craby$bridging$cxxbridge1$calculator_subtract(::std::size_t id_, double a, double b) noexcept;
 
-double craby$bridging$cxxbridge1$calculator_multiply(double a, double b) noexcept;
+double craby$bridging$cxxbridge1$calculator_multiply(::std::size_t id_, double a, double b) noexcept;
 
-double craby$bridging$cxxbridge1$calculator_divide(double a, double b) noexcept;
+double craby$bridging$cxxbridge1$calculator_divide(::std::size_t id_, double a, double b) noexcept;
 
-double craby$bridging$cxxbridge1$craby_test_numeric_method(double arg) noexcept;
+double craby$bridging$cxxbridge1$craby_test_numeric_method(::std::size_t id_, double arg) noexcept;
 
-bool craby$bridging$cxxbridge1$craby_test_boolean_method(bool arg) noexcept;
+bool craby$bridging$cxxbridge1$craby_test_boolean_method(::std::size_t id_, bool arg) noexcept;
 
-void craby$bridging$cxxbridge1$craby_test_string_method(::rust::String *arg, ::rust::String *return$) noexcept;
+void craby$bridging$cxxbridge1$craby_test_string_method(::std::size_t id_, ::rust::String *arg, ::rust::String *return$) noexcept;
 
-void craby$bridging$cxxbridge1$craby_test_object_method(::craby::bridging::TestObject *arg, ::craby::bridging::TestObject *return$) noexcept;
+void craby$bridging$cxxbridge1$craby_test_object_method(::std::size_t id_, ::craby::bridging::TestObject *arg, ::craby::bridging::TestObject *return$) noexcept;
 
-void craby$bridging$cxxbridge1$craby_test_array_method(::rust::Vec<double> *arg, ::rust::Vec<double> *return$) noexcept;
+void craby$bridging$cxxbridge1$craby_test_array_method(::std::size_t id_, ::rust::Vec<double> *arg, ::rust::Vec<double> *return$) noexcept;
 
-void craby$bridging$cxxbridge1$craby_test_enum_method(::craby::bridging::MyEnum arg0, ::craby::bridging::SwitchState arg1, ::rust::String *return$) noexcept;
+void craby$bridging$cxxbridge1$craby_test_enum_method(::std::size_t id_, ::craby::bridging::MyEnum arg0, ::craby::bridging::SwitchState arg1, ::rust::String *return$) noexcept;
 
-void craby$bridging$cxxbridge1$craby_test_nullable_method(::craby::bridging::NullableNumber *arg, ::craby::bridging::NullableNumber *return$) noexcept;
+void craby$bridging$cxxbridge1$craby_test_nullable_method(::std::size_t id_, ::craby::bridging::NullableNumber *arg, ::craby::bridging::NullableNumber *return$) noexcept;
 
-::rust::repr::PtrLen craby$bridging$cxxbridge1$craby_test_promise_method(double arg, double *return$) noexcept;
+::rust::repr::PtrLen craby$bridging$cxxbridge1$craby_test_promise_method(::std::size_t id_, double arg, double *return$) noexcept;
+
+void craby$bridging$cxxbridge1$craby_test_trigger_signal(::std::size_t id_) noexcept;
 } // extern "C"
+} // namespace bridging
 
-double add(double a, double b) noexcept {
-  return craby$bridging$cxxbridge1$calculator_add(a, b);
+namespace signals {
+extern "C" {
+void craby$signals$cxxbridge1$SignalManager$emit(::craby::signals::SignalManager const &self, ::std::size_t id, ::rust::Str name) noexcept {
+  void (::craby::signals::SignalManager::*emit$)(::std::size_t, ::rust::Str) const = &::craby::signals::SignalManager::emit;
+  (self.*emit$)(id, name);
 }
 
-double subtract(double a, double b) noexcept {
-  return craby$bridging$cxxbridge1$calculator_subtract(a, b);
+::craby::signals::SignalManager const *craby$signals$cxxbridge1$get_signal_manager() noexcept {
+  ::craby::signals::SignalManager const &(*get_signal_manager$)() = ::craby::signals::getSignalManager;
+  return &get_signal_manager$();
+}
+} // extern "C"
+} // namespace signals
+
+namespace bridging {
+double add(::std::size_t id_, double a, double b) noexcept {
+  return craby$bridging$cxxbridge1$calculator_add(id_, a, b);
 }
 
-double multiply(double a, double b) noexcept {
-  return craby$bridging$cxxbridge1$calculator_multiply(a, b);
+double subtract(::std::size_t id_, double a, double b) noexcept {
+  return craby$bridging$cxxbridge1$calculator_subtract(id_, a, b);
 }
 
-double divide(double a, double b) noexcept {
-  return craby$bridging$cxxbridge1$calculator_divide(a, b);
+double multiply(::std::size_t id_, double a, double b) noexcept {
+  return craby$bridging$cxxbridge1$calculator_multiply(id_, a, b);
 }
 
-double numericMethod(double arg) noexcept {
-  return craby$bridging$cxxbridge1$craby_test_numeric_method(arg);
+double divide(::std::size_t id_, double a, double b) noexcept {
+  return craby$bridging$cxxbridge1$calculator_divide(id_, a, b);
 }
 
-bool booleanMethod(bool arg) noexcept {
-  return craby$bridging$cxxbridge1$craby_test_boolean_method(arg);
+double numericMethod(::std::size_t id_, double arg) noexcept {
+  return craby$bridging$cxxbridge1$craby_test_numeric_method(id_, arg);
 }
 
-::rust::String stringMethod(::rust::String arg) noexcept {
+bool booleanMethod(::std::size_t id_, bool arg) noexcept {
+  return craby$bridging$cxxbridge1$craby_test_boolean_method(id_, arg);
+}
+
+::rust::String stringMethod(::std::size_t id_, ::rust::String arg) noexcept {
   ::rust::MaybeUninit<::rust::String> return$;
-  craby$bridging$cxxbridge1$craby_test_string_method(&arg, &return$.value);
+  craby$bridging$cxxbridge1$craby_test_string_method(id_, &arg, &return$.value);
   return ::std::move(return$.value);
 }
 
-::craby::bridging::TestObject objectMethod(::craby::bridging::TestObject arg) noexcept {
+::craby::bridging::TestObject objectMethod(::std::size_t id_, ::craby::bridging::TestObject arg) noexcept {
   ::rust::ManuallyDrop<::craby::bridging::TestObject> arg$(::std::move(arg));
   ::rust::MaybeUninit<::craby::bridging::TestObject> return$;
-  craby$bridging$cxxbridge1$craby_test_object_method(&arg$.value, &return$.value);
+  craby$bridging$cxxbridge1$craby_test_object_method(id_, &arg$.value, &return$.value);
   return ::std::move(return$.value);
 }
 
-::rust::Vec<double> arrayMethod(::rust::Vec<double> arg) noexcept {
+::rust::Vec<double> arrayMethod(::std::size_t id_, ::rust::Vec<double> arg) noexcept {
   ::rust::ManuallyDrop<::rust::Vec<double>> arg$(::std::move(arg));
   ::rust::MaybeUninit<::rust::Vec<double>> return$;
-  craby$bridging$cxxbridge1$craby_test_array_method(&arg$.value, &return$.value);
+  craby$bridging$cxxbridge1$craby_test_array_method(id_, &arg$.value, &return$.value);
   return ::std::move(return$.value);
 }
 
-::rust::String enumMethod(::craby::bridging::MyEnum arg0, ::craby::bridging::SwitchState arg1) noexcept {
+::rust::String enumMethod(::std::size_t id_, ::craby::bridging::MyEnum arg0, ::craby::bridging::SwitchState arg1) noexcept {
   ::rust::MaybeUninit<::rust::String> return$;
-  craby$bridging$cxxbridge1$craby_test_enum_method(arg0, arg1, &return$.value);
+  craby$bridging$cxxbridge1$craby_test_enum_method(id_, arg0, arg1, &return$.value);
   return ::std::move(return$.value);
 }
 
-::craby::bridging::NullableNumber nullableMethod(::craby::bridging::NullableNumber arg) noexcept {
+::craby::bridging::NullableNumber nullableMethod(::std::size_t id_, ::craby::bridging::NullableNumber arg) noexcept {
   ::rust::ManuallyDrop<::craby::bridging::NullableNumber> arg$(::std::move(arg));
   ::rust::MaybeUninit<::craby::bridging::NullableNumber> return$;
-  craby$bridging$cxxbridge1$craby_test_nullable_method(&arg$.value, &return$.value);
+  craby$bridging$cxxbridge1$craby_test_nullable_method(id_, &arg$.value, &return$.value);
   return ::std::move(return$.value);
 }
 
-double promiseMethod(double arg) {
+double promiseMethod(::std::size_t id_, double arg) {
   ::rust::MaybeUninit<double> return$;
-  ::rust::repr::PtrLen error$ = craby$bridging$cxxbridge1$craby_test_promise_method(arg, &return$.value);
+  ::rust::repr::PtrLen error$ = craby$bridging$cxxbridge1$craby_test_promise_method(id_, arg, &return$.value);
   if (error$.ptr) {
     throw ::rust::impl<::rust::Error>::error(error$);
   }
   return ::std::move(return$.value);
+}
+
+void triggerSignal(::std::size_t id_) noexcept {
+  craby$bridging$cxxbridge1$craby_test_trigger_signal(id_);
 }
 } // namespace bridging
 } // namespace craby
