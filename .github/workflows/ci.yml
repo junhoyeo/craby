@@ -175,7 +175,7 @@ jobs:
       - name: Install dependencies
         run: yarn workspaces focus ${{ env.PACKAGE_NAME }}
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: bindings-${{ matrix.settings.target }}
           path: ${{ env.PACKAGE_PATH }}/napi
@@ -238,7 +238,7 @@ jobs:
       - name: Install dependencies
         run: yarn workspaces focus ${{ env.PACKAGE_NAME }}
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: bindings-${{ matrix.target }}
           path: ${{ env.PACKAGE_PATH }}/napi
@@ -314,7 +314,7 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: ${{ env.PACKAGE_PATH }}/artifacts
       - name: Move artifacts

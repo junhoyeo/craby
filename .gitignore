@@ -183,6 +183,7 @@ $RECYCLE.BIN/
 
 # Added by cargo
 
+*.node
 /target
 Cargo.lock
 
