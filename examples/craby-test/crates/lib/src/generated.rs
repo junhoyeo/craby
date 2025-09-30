@@ -12,10 +12,6 @@ pub trait CalculatorSpec {
     fn divide(&self, a: Number, b: Number) -> Number;
 }
 
-pub enum CrabyTestSignal {
-    OnSignal,
-}
-
 pub trait CrabyTestSpec {
     fn new(id: usize) -> Self;
     fn id(&self) -> usize;
@@ -33,7 +29,11 @@ pub trait CrabyTestSpec {
     fn enum_method(&self, arg0: MyEnum, arg1: SwitchState) -> String;
     fn nullable_method(&self, arg: Nullable<Number>) -> Nullable<Number>;
     fn promise_method(&self, arg: Number) -> Promise<Number>;
-    fn trigger_signal(&self, ) -> Void;
+    fn trigger_signal(&self) -> Void;
+}
+
+pub enum CrabyTestSignal {
+    OnSignal,
 }
 
 impl Default for MyEnum {

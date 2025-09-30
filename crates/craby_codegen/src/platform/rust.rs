@@ -211,12 +211,16 @@ impl TypeAnnotation {
 impl Method {
     pub fn try_into_impl_sig(&self) -> Result<String, anyhow::Error> {
         let return_type = self.ret_type.as_rs_impl_type()?.0;
-        let params_sig = self
-            .params
-            .iter()
-            .map(|param| param.try_into_impl_sig())
-            .collect::<Result<Vec<_>, _>>()
-            .map(|params| params.join(", "))?;
+        let params_sig = std::iter::once("&self".to_string())
+            .chain(
+                self.params
+                    .iter()
+                    .map(|param| param.try_into_impl_sig())
+                    .collect::<Result<Vec<_>, _>>()?
+                    .into_iter(),
+            )
+            .collect::<Vec<_>>()
+            .join(", ");
 
         let fn_name = snake_case(&self.name);
         let ret_annotation = if return_type == "()" {
@@ -226,7 +230,7 @@ impl Method {
         };
 
         Ok(format!(
-            "fn {}(&self, {}){}",
+            "fn {}({}){}",
             fn_name.to_string(),
             params_sig,
             ret_annotation

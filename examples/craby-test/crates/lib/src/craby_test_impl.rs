@@ -1,4 +1,3 @@
-use crate::ffi;
 use crate::ffi::bridging::*;
 use crate::generated::*;
 use crate::types::*;
@@ -8,7 +7,7 @@ pub struct CrabyTest {
 }
 
 impl CrabyTestSpec for CrabyTest {
-    fn new(id: usize) -> CrabyTest {
+    fn new(id: usize) -> Self {
         CrabyTest { id }
     }
 

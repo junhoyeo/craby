@@ -7,7 +7,7 @@ pub struct Calculator {
 }
 
 impl CalculatorSpec for Calculator {
-    fn new(id: usize) -> Calculator {
+    fn new(id: usize) -> Self {
         Calculator { id }
     }
 

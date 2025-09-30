@@ -157,8 +157,7 @@ impl RsTemplate {
                 r#"
                 pub enum {signal_enum_name} {{
                     {signal_members}
-                }}
-                "#,
+                }}"#,
                 signal_enum_name = signal_enum_name,
                 signal_members = signal_members.join("\n"),
             };
@@ -177,9 +176,9 @@ impl RsTemplate {
 
             methods.insert(0, emit_impl);
 
-            signal_enum
+            Some(signal_enum)
         } else {
-            String::new()
+            None
         };
 
         let spec_trait = formatdoc! {
@@ -193,7 +192,12 @@ impl RsTemplate {
             methods = indent_str(methods.join("\n"), 4),
         };
 
-        let content = [spec_trait, signal_enum].join("\n\n");
+        let content = [Some(spec_trait), signal_enum]
+            .into_iter()
+            .filter(|s| s.is_some())
+            .map(|s| s.unwrap())
+            .collect::<Vec<_>>()
+            .join("\n\n");
 
         Ok(content)
     }
@@ -260,7 +264,7 @@ impl RsTemplate {
 
             pub struct {mod_name} {{
                 id: usize,
-            }};
+            }}
 
             impl {trait_name} for {mod_name} {{
             {methods}
@@ -419,35 +423,29 @@ impl RsTemplate {
     /// }
     /// ```
     pub fn generated_rs(&self, schemas: &Vec<Schema>) -> Result<String, anyhow::Error> {
-        let mut spec_codes = vec![];
+        let mut spec_codes = Vec::with_capacity(schemas.len());
         let mut type_aliases = BTreeMap::new();
 
-        schemas
-            .iter()
-            .try_for_each(|schema| -> Result<(), anyhow::Error> {
-                let spec = self.rs_spec(schema)?;
-
-                // Collect the type implementations
-                schema.try_collect_type_impls(&mut type_aliases)?;
-
-                spec_codes.push(spec);
-
-                Ok(())
-            })?;
+        for schema in schemas {
+            // Collect the type implementations
+            schema.try_collect_type_impls(&mut type_aliases)?;
+            spec_codes.push(self.rs_spec(schema)?);
+        }
 
         let type_impls = type_aliases.into_values().collect::<Vec<_>>();
-        let content = formatdoc! {
-            r#"
-            #[rustfmt::skip]
-            use crate::ffi::bridging::*;
-            use crate::types::*;
 
-            {spec_codes}
-
-            {type_impls}"#,
-            type_impls = type_impls.join("\n\n"),
-            spec_codes = spec_codes.join("\n\n"),
-        };
+        let content = [
+            vec![formatdoc! {
+                r#"
+                #[rustfmt::skip]
+                use crate::ffi::bridging::*;
+                use crate::types::*;"#,
+            }],
+            spec_codes,
+            type_impls,
+        ]
+        .concat()
+        .join("\n\n");
 
         Ok(content)
     }
