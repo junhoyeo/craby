@@ -10,11 +10,14 @@ import { command as showCommand } from './commands/show';
 export function run() {
   const cli = program.name('crabygen').version(version);
 
-  // Codegen is the default command
-  cli.action(runCodegen);
-  cli.addCommand(codegenCommand);
+  cli.argument('[command]', 'command to run').action((command) => {
+    // Codegen is the default command
+    if (command == null) {
+      runCodegen();
+    }
+  });
 
-  // Other commands
+  cli.addCommand(codegenCommand);
   cli.addCommand(initCommand);
   cli.addCommand(buildCommand);
   cli.addCommand(showCommand);

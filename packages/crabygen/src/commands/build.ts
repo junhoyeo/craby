@@ -5,6 +5,6 @@ import { resolveProjectRoot } from 'src/utils/resolve-project-root';
 
 export const command = withVerbose(
   new Command().name('build').action(async () => {
-    getBindings().codegen({ projectRoot: resolveProjectRoot() });
+    getBindings().build({ projectRoot: resolveProjectRoot() });
   }),
 );
