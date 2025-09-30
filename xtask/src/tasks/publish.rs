@@ -1,28 +1,27 @@
 use crate::utils::{
-    collect_packages, get_version_from_commit_message, is_main_ref, validate_package_versions,
-    PackageInfo,
+    collect_packages, get_version_from_commit_message, is_main_ref, run_command,
+    validate_package_versions, PackageInfo,
 };
 use anyhow::Result;
 use std::env;
 use std::io::Write;
 use std::path::PathBuf;
-use std::process::Command;
 
 fn setup_npm() -> Result<()> {
     let npm_token = env::var("NPM_TOKEN").map_err(|_| anyhow::anyhow!("NPM_TOKEN is not set"))?;
 
-    Command::new("yarn")
-        .args(&[
+    run_command(
+        "yarn",
+        &[
             "config",
             "set",
             "npmPublishRegistry",
             "https://registry.npmjs.org/",
-        ])
-        .status()?;
+        ],
+        None,
+    )?;
 
-    Command::new("yarn")
-        .args(&["config", "set", "npmAuthToken", &npm_token])
-        .status()?;
+    run_command("yarn", &["config", "set", "npmAuthToken", &npm_token], None)?;
 
     let npmrc_content = format!("//registry.npmjs.org/:_authToken={}\n", npm_token);
     let home_dir = PathBuf::from(env::var("HOME")?);
@@ -40,15 +39,17 @@ fn setup_npm() -> Result<()> {
 fn publish_napi_package(napi_package: &PackageInfo) -> Result<()> {
     println!("Publishing NAPI package: {}", napi_package.name);
 
-    Command::new("yarn")
-        .args(&["napi", "prepublish", "-t", "npm", "--no-gh-release"])
-        .current_dir(&napi_package.location)
-        .status()?;
+    run_command(
+        "yarn",
+        &["napi", "prepublish", "-t", "npm", "--no-gh-release"],
+        Some(&napi_package.location),
+    )?;
 
-    Command::new("yarn")
-        .args(&["npm", "publish", "--access", "public"])
-        .current_dir(&napi_package.location)
-        .status()?;
+    run_command(
+        "yarn",
+        &["npm", "publish", "--access", "public"],
+        Some(&napi_package.location),
+    )?;
 
     Ok(())
 }
@@ -56,16 +57,19 @@ fn publish_napi_package(napi_package: &PackageInfo) -> Result<()> {
 fn publish_packages(packages: &[PackageInfo]) -> Result<()> {
     for package_info in packages {
         println!("Publishing {}...", package_info.name);
-        Command::new("yarn")
-            .args(&[
+
+        run_command(
+            "yarn",
+            &[
                 "workspace",
                 &package_info.name,
                 "npm",
                 "publish",
                 "--access",
                 "public",
-            ])
-            .status()?;
+            ],
+            None,
+        )?;
     }
     Ok(())
 }
