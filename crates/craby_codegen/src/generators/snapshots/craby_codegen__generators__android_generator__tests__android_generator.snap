@@ -1,6 +1,6 @@
 ---
 source: crates/craby_codegen/src/generators/android_generator.rs
-expression: "results.iter().map(|res|\nformat!(\"{}\\n{}\", res.path.display(),\nres.content)).collect::<Vec<_>>().join(\"\\n\\n\")"
+expression: result
 ---
 ./android/src/main/jni/OnLoad.cpp
 #include <CxxCrabyTestModule.hpp>
@@ -30,7 +30,7 @@ find_package(ReactAndroid REQUIRED CONFIG)
 # Import the pre-built Craby library
 add_library(test-module-lib STATIC IMPORTED)
 set_target_properties(test-module-lib PROPERTIES
-  IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/src/main/jni/libs/${ANDROID_ABI}/libtestmodule-craby.a"
+  IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/src/main/jni/libs/${ANDROID_ABI}/libtestmodule-prebuilt.a"
 )
 target_include_directories(test-module-lib INTERFACE
   "${CMAKE_SOURCE_DIR}/src/main/jni/include"

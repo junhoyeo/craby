@@ -40,7 +40,7 @@ pub fn crate_libs<'a>(config: &'a CompleteCrabyConfig) -> Result<(), anyhow::Err
     }
 
     let signal_path = jni_base_path.join("include").join("signals.h");
-    if signal_path.exists() {
+    if signal_path.try_exists()? {
         replace_cxx_header(&signal_path)?;
     }
 

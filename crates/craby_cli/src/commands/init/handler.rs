@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, fs, path::PathBuf};
+use std::{collections::BTreeMap, path::PathBuf};
 
 use crate::utils::{
     git::{clone_template, is_git_available},
@@ -23,7 +23,8 @@ pub struct InitOptions {
 
 pub fn perform(opts: InitOptions) -> anyhow::Result<()> {
     let dest_dir = opts.cwd.join(&opts.pkg_name);
-    if fs::exists(&dest_dir)? {
+
+    if dest_dir.try_exists()? {
         anyhow::bail!("{} directory already exists", dest_dir.display());
     }
 

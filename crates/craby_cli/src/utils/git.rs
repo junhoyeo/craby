@@ -7,7 +7,7 @@ pub fn is_git_available() -> bool {
 pub fn clone_template() -> Result<PathBuf, anyhow::Error> {
     let temp_dir = std::env::temp_dir().join("craby-init");
 
-    if fs::exists(&temp_dir)? {
+    if temp_dir.try_exists()? {
         fs::remove_dir_all(&temp_dir)?;
     }
 

@@ -41,7 +41,7 @@ pub fn crate_libs<'a>(config: &'a CompleteCrabyConfig) -> Result<(), anyhow::Err
     }
 
     let signal_path = ios_base_path.join("include").join("signals.h");
-    if signal_path.exists() {
+    if signal_path.try_exists()? {
         replace_cxx_header(&signal_path)?;
     }
 
@@ -56,7 +56,7 @@ fn create_xcframework(config: &CompleteCrabyConfig) -> Result<PathBuf, anyhow::E
     let xcframework_path =
         framework_path.join(format!("lib{}.xcframework", lib_base_name.to_string()));
 
-    if fs::exists(&xcframework_path)? {
+    if xcframework_path.try_exists()? {
         fs::remove_dir_all(&xcframework_path)?;
     }
 

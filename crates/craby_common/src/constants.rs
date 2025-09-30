@@ -38,9 +38,9 @@ pub fn lib_base_name(name: &SanitizedString) -> String {
 
 /// Returns the destination name of the built library
 ///
-/// Example: `libsomelibrary-craby.a`
+/// Example: `libsomelibrary-prebuilt.a`
 pub fn dest_lib_name(name: &SanitizedString) -> String {
-    format!("lib{}-craby.a", flat_case(name.0.as_ref()))
+    format!("lib{}-prebuilt.a", flat_case(name.0.as_ref()))
 }
 
 /// Example: `some_module_impl`

@@ -25,11 +25,11 @@ fn validate_config(
     manifest_path: &PathBuf,
     config_path: &PathBuf,
 ) -> Result<CrabyConfig, anyhow::Error> {
-    if !manifest_path.exists() {
+    if !manifest_path.try_exists()? {
         return Err(anyhow::anyhow!("Cargo.toml not found"));
     }
 
-    if !config_path.exists() {
+    if !config_path.try_exists()? {
         return Err(anyhow::anyhow!("craby.toml not found"));
     }
 

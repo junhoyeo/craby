@@ -97,20 +97,22 @@ impl Generator<IosTemplate> for IosGenerator {
     fn cleanup(ctx: &CodegenContext) -> Result<(), anyhow::Error> {
         let src_path = ios_base_path(&ctx.root).join("src");
 
-        fs::read_dir(src_path)?.try_for_each(|entry| -> Result<(), anyhow::Error> {
-            let path = entry?.path();
-            let file_name = path
-                .file_name()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .to_string();
+        if src_path.try_exists()? {
+            fs::read_dir(src_path)?.try_for_each(|entry| -> Result<(), anyhow::Error> {
+                let path = entry?.path();
+                let file_name = path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
 
-            if file_name.ends_with(".mm") {
-                fs::remove_file(&path)?;
-            }
+                if file_name.ends_with(".mm") {
+                    fs::remove_file(&path)?;
+                }
 
-            Ok(())
-        })?;
+                Ok(())
+            })?;
+        }
 
         Ok(())
     }

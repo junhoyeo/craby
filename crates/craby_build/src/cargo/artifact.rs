@@ -76,9 +76,9 @@ impl Artifacts {
             ArtifactType::Lib => &self.libs,
         };
 
-        if !fs::exists(dest)? {
+        if !dest.try_exists()? {
             debug!("Creating destination directory: {:?}", dest);
-            fs::create_dir_all(dest)?;
+            fs::create_dir_all(&dest)?;
         }
 
         target_artifacts.iter().try_for_each(|src| {
@@ -86,16 +86,17 @@ impl Artifacts {
             let ext = src.extension().unwrap().to_string_lossy().to_string();
 
             let dest = if artifact_type == ArtifactType::Lib {
-                // Add `-craby` suffix to the library name
+                // Add `-prebuilt` suffix to the library name
                 let lib_name = file_name.to_string_lossy().to_string().replace(
                     format!(".{}", ext).as_str(),
-                    format!("-craby.{}", ext).as_str(),
+                    format!("-prebuilt.{}", ext).as_str(),
                 );
                 dest.join(lib_name)
             } else {
                 dest.join(file_name)
             };
 
+            debug!("Copying artifact: {:?} to {:?}", src, dest);
             fs::copy(src, dest)?;
             Ok(())
         })
