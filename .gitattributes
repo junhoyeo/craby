@@ -3,6 +3,7 @@
 /.yarn/plugins/**/*  binary
 /.pnp.*              binary linguist-generated
 
-/packages/cli-bindings/templates/**/* linguist-vendored
+/packages/cli-bindings/index.js       linguist-vendored
+/packages/cli-bindings/index.d.ts     linguist-vendored
 /examples/**/*                        linguist-vendored
 /template/**/*                        linguist-vendored
