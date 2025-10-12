@@ -18,10 +18,22 @@ pub mod toolchain {
                 Target::Ios(identifier) => match identifier {
                     Identifier::Arm64 => "aarch64-apple-ios",
                     Identifier::Arm64Simulator => "aarch64-apple-ios-sim",
+                    Identifier::X86_64Simulator => "x86_64-apple-ios",
+                    _ => unreachable!(),
                 },
             }
         }
     }
+
+    pub const BUILD_TARGETS: [Target; 7] = [
+        Target::Android(Abi::Arm64V8a),
+        Target::Android(Abi::ArmeAbiV7a),
+        Target::Android(Abi::X86_64),
+        Target::Android(Abi::X86),
+        Target::Ios(Identifier::Arm64),
+        Target::Ios(Identifier::Arm64Simulator),
+        Target::Ios(Identifier::X86_64Simulator),
+    ];
 }
 
 pub mod android {
@@ -93,16 +105,24 @@ pub mod android {
 
 pub mod ios {
     pub enum Identifier {
+        /// For device
         Arm64,
+        /// For simulator (arm64)
         Arm64Simulator,
+        /// For simulator (x86_64)
+        X86_64Simulator,
+        /// For XCFramework identifier (arm64 + x86_64 architecture for simulator)
+        /// Each libraries are combined into a single library by `lipo`
+        Simulator,
     }
 
     impl Identifier {
-        pub fn to_str(&self) -> &str {
-            match self {
+        pub fn try_into_str(&self) -> Result<&str, anyhow::Error> {
+            Ok(match self {
                 Identifier::Arm64 => "ios-arm64",
-                Identifier::Arm64Simulator => "ios-arm64-simulator",
-            }
+                Identifier::Simulator => "ios-arm64_x86_64-simulator",
+                _ => anyhow::bail!("Invalid identifier"),
+            })
         }
     }
 }
