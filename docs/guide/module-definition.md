@@ -5,7 +5,9 @@ This guide explains how to define your native module using TypeScript specs.
 ## Basic Module Structure
 
 ::: info
+
 Module spec files must start with the "Native" prefix.
+
 :::
 
 Every Craby module starts with a TypeScript spec that extends `NativeModule`:
@@ -58,7 +60,7 @@ export interface User {
 }
 ```
 
-### Type Aliases
+## Type Aliases
 
 Use type aliases for better code organization:
 
@@ -77,16 +79,6 @@ export interface User {
 When you run `crabygen` command, Craby generates Rust code from your TypeScript spec:
 
 ### Generated Rust Trait
-
-
-  // Synchronous method
-  square(n: number): number;
-
-  // Asynchronous method (returns Promise)
-  calculatePrime(n: number): Promise<number>;
-
-  // With user-defined types
-  getSomething(): Something;
 
 ```rust
 // Auto-generated from TypeScript spec

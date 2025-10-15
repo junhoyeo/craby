@@ -52,7 +52,7 @@ impl CxxTemplate {
     ///        facebook::react::TurboModule &turboModule,
     ///        const facebook::jsi::Value args[], size_t count);
     /// ```
-    fn cxx_method_def(&self, name: &String) -> String {
+    fn cxx_method_def(&self, name: &str) -> String {
         formatdoc! {
             r#"
             static facebook::jsi::Value
@@ -181,7 +181,7 @@ impl CxxTemplate {
             .map(|method| method.impl_func)
             .collect::<Vec<_>>();
 
-        let (register_stmt, unregister_stmt) = if schema.signals.len() > 0 {
+        let (register_stmt, unregister_stmt) = if !schema.signals.is_empty() {
             let register_stmt = formatdoc! {
                 r#"
                 uintptr_t id = reinterpret_cast<uintptr_t>(this);
@@ -477,7 +477,7 @@ impl CxxTemplate {
     /// } // namespace react
     /// } // namespace facebook
     /// ```
-    fn cxx_bridging(&self, schemas: &Vec<Schema>) -> Result<String, anyhow::Error> {
+    fn cxx_bridging(&self, schemas: &[Schema]) -> Result<String, anyhow::Error> {
         let bridging_templates = schemas
             .iter()
             .flat_map(|schema| schema.as_cxx_bridging_templates())
@@ -686,7 +686,7 @@ impl Template for CxxTemplate {
                 let has_signals = project
                     .schemas
                     .iter()
-                    .any(|schema| schema.signals.len() > 0);
+                    .any(|schema| !schema.signals.is_empty());
 
                 if has_signals {
                     vec![(
@@ -703,6 +703,12 @@ impl Template for CxxTemplate {
     }
 }
 
+impl Default for CxxGenerator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CxxGenerator {
     pub fn new() -> Self {
         Self {}
@@ -716,11 +722,7 @@ impl Generator<CxxTemplate> for CxxGenerator {
         if cxx_dir.try_exists()? {
             fs::read_dir(cxx_dir)?.try_for_each(|entry| -> Result<(), anyhow::Error> {
                 let path = entry?.path();
-                let file_name = path
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .to_string();
+                let file_name = path.file_name().unwrap().to_string_lossy().to_string();
 
                 if file_name.starts_with("Cxx")
                     && (file_name.ends_with("Module.cpp") || file_name.ends_with("Module.hpp"))
