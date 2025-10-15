@@ -6,7 +6,11 @@ export default withMermaid(
   defineConfig({
     title: 'Craby',
     description: 'Type-safe Rust for React Native—auto generated, integrated with pure C++ TurboModule',
-    head: [['link', { rel: 'icon', href: '/favicon.ico' }]],
+    head: [
+      ['link', { rel: 'icon', href: '/favicon.ico' }],
+      ['meta', { property: 'og:image', content: '/banner.png' }],
+      ['meta', { name: 'twitter:image', content: '/banner.png' }],
+    ],
     themeConfig: {
       // https://vitepress.dev/reference/default-theme-config
       nav: [
