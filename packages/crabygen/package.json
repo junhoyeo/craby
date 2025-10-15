@@ -14,8 +14,14 @@
   },
   "files": [
     "dist",
-    "bin.js"
+    "bin.js",
+    "bin-craby.js"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/leegeunhyeok/craby.git",
+    "directory": "packages/crabygen"
+  },
   "author": "leegeunhyeok <dev.ghlee@gmail.com> (https://github.com/leegeunhyeok)",
   "license": "MIT",
   "bugs": {
@@ -33,5 +39,5 @@
     "tsdown": "^0.15.6",
     "typescript": "^5.9.2"
   },
-  "packageManager": "yarn@4.9.2"
+  "packageManager": "yarn@4.10.3"
 }

@@ -23,6 +23,11 @@
     "index.js",
     "index.d.ts"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/leegeunhyeok/craby.git",
+    "directory": "packages/cli-bindings"
+  },  
   "devDependencies": {
     "@napi-rs/cli": "^3.1.5",
     "typescript": "^5.9.2",
