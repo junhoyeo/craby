@@ -274,14 +274,14 @@ jobs:
         with:
           targets: aarch64-apple-darwin
           toolchain: nightly-2025-08-04
+      - name: Prepare packages
+        run: cargo xtask prepare
       - name: Lint
         run: yarn lint:all
-      - name: Build
-        run: cargo xtask prepare
       - name: Typecheck
-        run: yarn workspaces foreach --all --topological-dev --exclude craby-0.80 run typecheck
+        run: yarn workspaces foreach --all --topological-dev --exclude "{craby-0.76,craby-0.80}" run typecheck
       - name: Test
-        run: yarn workspaces foreach --all --topological-dev --exclude craby-0.80 run test
+        run: yarn workspaces foreach --all --topological-dev --exclude "{craby-0.76,craby-0.80}" run test
 
   rust-integrations:
     name: Rust Integrations

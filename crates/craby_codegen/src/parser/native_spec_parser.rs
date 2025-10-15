@@ -101,8 +101,15 @@ impl<'a> NativeModuleAnalyzer<'a> {
             };
         }
 
-        self.specs
-            .insert(it.id.symbol_id(), Spec { methods, signals });
+        let name = it.id.name.to_string();
+        self.specs.insert(
+            it.id.symbol_id(),
+            Spec {
+                name,
+                methods,
+                signals,
+            },
+        );
     }
 
     fn collect_interface_type(&mut self, it: &TSInterfaceDeclaration<'a>) {
@@ -695,7 +702,7 @@ impl<'a> NativeModuleAnalyzer<'a> {
     fn try_into_schema(self) -> Result<Vec<Schema>, anyhow::Error> {
         let mut schemas = Vec::with_capacity(self.specs.len());
 
-        for (id, spec) in self.specs {
+        for (id, mut spec) in self.specs {
             let mut types = FxHashSet::default();
             let mut enums = FxHashSet::default();
             let module_name = self
@@ -703,7 +710,7 @@ impl<'a> NativeModuleAnalyzer<'a> {
                 .get(&id)
                 .ok_or(anyhow::anyhow!("NativeModule name not found"))?;
 
-            let methods = spec
+            let mut methods = spec
                 .methods
                 .into_iter()
                 .map(|mut method| {
@@ -745,8 +752,11 @@ impl<'a> NativeModuleAnalyzer<'a> {
             let mut aliases = types.into_iter().collect::<Vec<_>>();
             let mut enums = enums.into_iter().collect::<Vec<_>>();
 
-            aliases.sort();
-            enums.sort();
+            // Sort collected metadata to ensure deterministic output (for hash)
+            aliases.sort_by_key(|v| v.as_object().unwrap().name.to_lowercase());
+            enums.sort_by_key(|v| v.as_enum().unwrap().name.to_lowercase());
+            methods.sort_by_key(|v| v.name.to_lowercase());
+            spec.signals.sort_by_key(|v| v.name.to_lowercase());
 
             schemas.push(Schema {
                 module_name: module_name.to_owned(),
@@ -871,16 +881,15 @@ pub fn try_parse_schema(src: &str) -> Result<Vec<Schema>, ParseError> {
     debug!("Collected decls: {:?}", analyzer.decls);
 
     let schemas = analyzer.try_into_schema()?;
-    debug!("Collected schemas: {:?}", schemas);
 
     Ok(schemas)
 }
 
 #[cfg(test)]
 mod tests {
-    use insta::assert_debug_snapshot;
+    use insta::{assert_debug_snapshot, assert_snapshot};
 
-    use crate::parser::native_spec_parser::try_parse_schema;
+    use crate::{parser::native_spec_parser::try_parse_schema, types::Schema};
 
     #[test]
     fn test_common_spec() {
@@ -1228,5 +1237,53 @@ mod tests {
         let result = try_parse_schema(&src);
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_hash() {
+        let src_1: &'static str = "
+        import type { NativeModule, Signal } from 'craby-modules';
+        import { NativeModuleRegistry } from 'craby-modules';
+
+        interface SomeObject {
+            a: string;
+            b: number;
+            c: boolean;
+        }
+
+        export interface Spec extends NativeModule {
+            foo(arg: SomeObject): SomeObject;
+            bar(): void;
+            baz(): void;
+            onSignal: Signal;
+        }
+
+        export default NativeModuleRegistry.getEnforcing<Spec>('MyModule');
+        ";
+
+        let src_2: &'static str = "
+        import type { NativeModule, Signal } from 'craby-modules';
+        import { NativeModuleRegistry } from 'craby-modules';
+
+        export interface Spec extends NativeModule {
+            foo(): void;
+            bar(): void;
+            baz(): void;
+        }
+
+        export default NativeModuleRegistry.getEnforcing<Spec>('MyModule');
+        ";
+        let schemas = try_parse_schema(&src_1).unwrap();
+        let hash_1 = Schema::to_hash(&schemas);
+
+        let schemas = try_parse_schema(&src_1).unwrap();
+        let hash_2 = Schema::to_hash(&schemas);
+
+        let schemas = try_parse_schema(&src_2).unwrap();
+        let hash_3 = Schema::to_hash(&schemas);
+
+        assert_eq!(hash_1, hash_2);
+        assert_ne!(hash_1, hash_3);
+        assert_snapshot!([hash_1, hash_2, hash_3].join("\n"));
     }
 }

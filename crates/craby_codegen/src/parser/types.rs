@@ -1,4 +1,5 @@
 use oxc::{diagnostics::OxcDiagnostic, semantic::ReferenceId};
+use serde::Serialize;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -11,26 +12,28 @@ pub enum ParseError {
 
 #[derive(Debug)]
 pub struct Spec {
+    /// Spec name
+    pub name: String,
     /// Module methods
     pub methods: Vec<Method>,
     /// Module signals
     pub signals: Vec<Signal>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Serialize)]
 pub struct Method {
     pub name: String,
     pub params: Vec<Param>,
     pub ret_type: TypeAnnotation,
 }
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Serialize)]
 pub struct Param {
     pub name: String,
     pub type_annotation: TypeAnnotation,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Hash)]
 pub enum TypeAnnotation {
     Void,
     Boolean,
@@ -61,43 +64,44 @@ impl TypeAnnotation {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Hash)]
 pub struct ObjectTypeAnnotation {
     pub name: String,
     pub props: Vec<Prop>,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Hash)]
 pub struct Prop {
     pub name: String,
     pub type_annotation: TypeAnnotation,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Hash)]
 pub struct EnumTypeAnnotation {
     pub name: String,
     pub members: Vec<EnumMember>,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Hash)]
 pub struct EnumMember {
     pub name: String,
     pub value: EnumMemberValue,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Hash)]
 pub enum EnumMemberValue {
     String(String),
     Number(usize),
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Hash)]
 pub struct RefTypeAnnotation {
+    #[serde(skip)]
     pub ref_id: ReferenceId,
     pub name: String,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize)]
 pub struct Signal {
     pub name: String,
 }
