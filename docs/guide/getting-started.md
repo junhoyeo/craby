@@ -41,7 +41,7 @@ npx crabygen doctor
 
 :::
 
-## Installation
+## Create a Project
 
 You have two options for getting started with Craby: scaffolding a new module or adding it manually to an existing project.
 
@@ -64,6 +64,7 @@ This will create a complete module structure with:
 If you want to add Craby to an existing React Native module:
 
 ::: code-group
+
 ```bash [npm]
 npm install craby-modules
 npm install --save-dev crabygen
@@ -78,85 +79,10 @@ pnpm add -D crabygen
 yarn add craby-modules
 yarn add -D crabygen
 ```
+
 :::
 
-After installation, you'll need to set up the project structure manually (see [Project Structure](#project-structure) below).
-
-### iOS Configuration
-
-In your `.podspec` file:
-
-```ruby
-Pod::Spec.new do |s|
-  s.name         = "YourModule"
-  s.version      = "1.0.0"
-
-  # Include C++ and iOS source files
-  s.source_files = ["ios/**/*.{h,m,mm,cc,cpp}", "cpp/**/*.{hpp,cpp}"]
-  s.private_header_files = "ios/include/*.h"
-
-  # Link the XCFramework
-  s.vendored_frameworks = "ios/framework/libyourmodule.xcframework"
-
-  # Add flag to using C++20
-  s.pod_target_xcconfig = {
-    "CLANG_CXX_LANGUAGE_STANDARD" => "c++20",
-  }
-end
-```
-
-### Android Configuration
-
-In `android/build.gradle`:
-
-```groovy
-def reactNativeArchitectures() {
-  def value = rootProject.getProperties().get("reactNativeArchitectures")
-  return value ? value.split(",") : ["armeabi-v7a", "x86", "x86_64", "arm64-v8a"]
-}
-
-// Configure CMake
-android {
-  defaultConfig {
-    externalNativeBuild {
-      cmake {
-        targets "cxx-my-module"
-        cppFlags "-frtti -fexceptions -Wall -Wextra -fstack-protector-all"
-        arguments "-DANDROID_STL=c++_shared", "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
-        abiFilters (*reactNativeArchitectures())
-        buildTypes {
-          debug {
-            cppFlags "-O1 -g"
-          }
-          release {
-            cppFlags "-O2"
-          }
-        }
-      }
-    }
-  }
-
-  externalNativeBuild {
-    cmake {
-      path "CMakeLists.txt"
-    }
-  }
-
-  buildTypes {
-    debug {
-      jniDebuggable true
-    }
-    release {
-      minifyEnabled false
-      externalNativeBuild {
-        cmake {
-          arguments "-DCMAKE_BUILD_TYPE=Release"
-        }
-      }
-    }
-  }
-}
-```
+After installation, you'll need to set up the project structure manually (see [default template](https://github.com/leegeunhyeok/craby/tree/main/template)).
 
 ## Project Structure
 
@@ -173,17 +99,17 @@ your-module/
 │       ├── build.rs
 │       └── src/
 │           ├── lib.rs            # Module entry
-│           ├── module_impl.rs    # Your implementation ⭐
 │           ├── ffi.rs            # Generated FFI layer
 │           ├── types.rs          # Helper types
 │           └── generated.rs      # Generated traits
-├── cpp/                          # Pure C++ TurboModule code
+├── cpp/                          # C++ implementations
 ├── android/                      # Android native setup
 │   ├── build.gradle
 │   └── CMakeLists.txt
 ├── ios/                          # iOS native setup
 │   └── framework/                # Generated XCFramework
 ├── Cargo.toml                    # Root Cargo workspace
+├── craby.toml                    # Craby config
 ├── rust-toolchain.toml           # Rust version config
 └── package.json
 ```
@@ -230,7 +156,13 @@ npx crabygen
 
 ### Step 3: Implement the Rust Logic
 
-Open `crates/lib/src/calculator_impl.rs` and implement the trait:
+When you run `crabygen` for the first time, it generates a default implementation file based on your module spec. Open `crates/lib/src/calculator_impl.rs` and implement the trait:
+
+::: info
+
+The default implementation file is only generated once to prevent overwriting your custom code. You can always reference the template in the `.craby` folder at your project root if needed.
+
+:::
 
 ```rust
 use crate::ffi::bridging::*;
@@ -278,8 +210,13 @@ npx crabygen build
 
 ### Step 5: Sync with Native Projects
 
-- Android: Sync Gradle
-- iOS: Install Pods
+After building the native binaries, install CocoaPods dependencies for iOS:
+
+```bash
+cd ios && pod install
+```
+
+For Android, Gradle will automatically sync when you build the React Native app.
 
 ### Step 6: Build the React Native Application and Run
 
@@ -299,4 +236,4 @@ const quotient = Calculator.divide(10, 5); // 2
 Now that you've created your first module, explore:
 
 - [Module Definition](/guide/module-definition) - Learn about module specs and types
-- [How to build](/guide/build) - Build native binaries
+- [How to Build](/guide/build) - Build native binaries

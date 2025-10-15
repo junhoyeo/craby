@@ -31,6 +31,12 @@ This command:
 
 Your implementation file. This is where you write your actual Rust logic.
 
+::: info
+
+The default implementation file is only generated once to prevent overwriting your custom code. You can always reference the template in the `.craby` folder at your project root if needed.
+
+:::
+
 **Generated template:**
 
 ```rust
@@ -52,46 +58,20 @@ impl CalculatorSpec for Calculator {
     }
 
     fn add(&mut self, a: Number, b: Number) -> Number {
-        unimplemented!() // TODO: Implement your logic here
+        unimplemented!();
     }
 
     fn greet(&mut self, name: String) -> String {
-        unimplemented!() // TODO: Implement your logic here
+        unimplemented!();
     }
 }
 ```
-
-::: warning
-This file is **generated only once**. After the initial generation, you can freely edit it—your changes will be preserved on subsequent codegen runs.
-:::
 
 ## Understanding Generated Code
 
 ### Type Mapping
 
-Here's how TypeScript types map to generated Rust code:
-
-| TypeScript | Generated Rust |
-|------------|----------------|
-| `boolean` | `Boolean` (alias for `bool`) |
-| `number` | `Number` (alias for `f64`) |
-| `string` | `String` (alias for `std::string::String`) |
-| `object` | `struct` (custom struct) |
-| `T[]` | `Array<T>` (alias for `std::vec::Vec<T>`) |
-| `T \| null` | `Nullable<T>` (custom struct) |
-| `Promise<T>` | `Promise<T>` (alias for `std::result::Result<T, anyhow::Error>`) |
-| `enum E { A = 'a' }` | `enum E { A }` |
-| `void` | `Void` (alias for `()`) |
-
-### Naming Conventions
-
-Method and field names are automatically converted to `snake_case`:
-
-| TypeScript | Rust |
-|------------|------|
-| `getUserName` | `get_user_name` |
-| `isActive` | `is_active` |
-| `phoneNumber` | `phone_number` |
+Craby automatically maps TypeScript types to Rust types during code generation. For detailed information about supported types and their mappings, see the [Types](/guide/types) guide.
 
 ### Signal Generation
 
@@ -120,7 +100,17 @@ impl MyModuleSpec for MyModule {
 }
 ```
 
-### View Generated Specs
+### Naming Conventions
+
+Method and field names are automatically converted to `snake_case`:
+
+| TypeScript | Rust |
+|------------|------|
+| `getUserName` | `get_user_name` |
+| `isActive` | `is_active` |
+| `phoneNumber` | `phone_number` |
+
+### Preview Generated Specs
 
 See what modules and methods were detected:
 

@@ -22,9 +22,9 @@ export default withMermaid(
           text: 'Getting Started',
           items: [
             { text: 'Introduction', link: '/guide/introduction' },
-            { text: 'Setup Craby Project', link: '/guide/getting-started' },
+            { text: 'Create a Project', link: '/guide/getting-started' },
             { text: 'Module Definition', link: '/guide/module-definition' },
-            { text: 'How to build', link: '/guide/build' },
+            { text: 'How to Build', link: '/guide/build' },
             { text: 'CLI Commands', link: '/guide/cli-commands' },
           ],
         },
@@ -37,6 +37,11 @@ export default withMermaid(
             { text: 'Sync vs Async', link: '/guide/sync-vs-async' },
           ],
         },
+        {
+          items: [
+            { text: 'Limitations', link: '/guide/limitations' },
+          ],
+        }
       ],
       socialLinks: [{ icon: 'github', link: 'https://github.com/leegeunhyeok/craby' }],
       search: {

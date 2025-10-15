@@ -11,7 +11,9 @@ npx crabygen <command> [options]
 ```
 
 ::: info
-The `craby` command is an alias for `crabygen`
+
+You can also use the `craby` command instead of `crabygen` (they are aliases).
+
 :::
 
 ## `init`
@@ -28,7 +30,6 @@ npx crabygen init <module-name>
 
 ```bash
 npx crabygen init my-calculator
-cd my-calculator
 ```
 
 ## `codegen`
@@ -37,8 +38,6 @@ Generates Rust and C++ bridge code from your TypeScript specs.
 
 ```bash
 npx crabygen
-# or
-npx crabygen codegen
 ```
 
 ## `build`

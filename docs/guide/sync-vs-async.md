@@ -19,24 +19,19 @@ Synchronous methods execute **immediately** on the **JavaScript thread** and ret
 export interface Spec extends NativeModule {
   add(a: number, b: number): number;
   formatString(text: string): string;
-  isValid(value: boolean): boolean;
 }
 ```
 
 ### Implementation
 
 ```rust
-impl CalculatorSpec for Calculator {
+impl LightComputeSpec for LightCompute {
     fn add(&mut self, a: Number, b: Number) -> Number {
         a + b  // Returns immediately
     }
 
     fn format_string(&mut self, text: String) -> String {
         text.to_uppercase()  // Returns immediately
-    }
-
-    fn is_valid(&mut self, value: Boolean) -> Boolean {
-        !value  // Returns immediately
     }
 }
 ```
@@ -45,10 +40,10 @@ impl CalculatorSpec for Calculator {
 
 ```typescript
 // Executes immediately, blocks until complete
-const result = Calculator.add(5, 3);
+const result = LightCompute.add(5, 3);
 console.log(result); // 8
 
-const formatted = Calculator.formatString("hello");
+const formatted = LightCompute.formatString("hello");
 console.log(formatted); // "HELLO"
 ```
 
@@ -66,7 +61,8 @@ Use synchronous methods when:
 </div>
 
 **Examples of good sync methods:**
-- Math calculations
+
+- Basic math calculations
 - String formatting
 - Simple data validation
 - Type conversions
@@ -80,7 +76,6 @@ Asynchronous methods return `Promise<T>` and execute in **separate threads** (ma
 ```typescript
 export interface Spec extends NativeModule {
   calculatePrime(n: number): Promise<number>;
-  sortLargeArray(numbers: number[]): Promise<number[]>;
   computeHash(data: string): Promise<string>;
 }
 ```
@@ -91,18 +86,15 @@ export interface Spec extends NativeModule {
 impl HeavyComputeSpec for HeavyCompute {
     fn calculate_prime(&mut self, n: Number) -> Promise<Number> {
         if n <= 0.0 {
+            // Use the `reject` function from the `promise` module to reject the Promise
             return promise::reject("Invalid input");
         }
 
         // Long-running computation runs in separate thread
         let prime = nth_prime(n as i64);
-        promise::resolve(prime as f64)
-    }
 
-    fn sort_large_array(&mut self, mut numbers: Array<Number>) -> Promise<Array<Number>> {
-        // Heavy sorting operation - runs in separate thread
-        numbers.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        promise::resolve(numbers)
+        // Use the `resolve` function from the `promise` module to resolve the Promise
+        promise::resolve(prime as f64)
     }
 
     fn compute_hash(&mut self, data: String) -> Promise<String> {
@@ -120,7 +112,7 @@ impl HeavyComputeSpec for HeavyCompute {
 const prime = await HeavyCompute.calculatePrime(10000);
 console.log('10000th prime:', prime);
 
-// Or with .then()
+// Or with promise chaining
 HeavyCompute.sortLargeArray([5, 2, 9, 1, 7])
   .then(sorted => console.log('Sorted:', sorted))
   .catch(error => console.error('Error:', error));
@@ -140,92 +132,22 @@ Use asynchronous methods when:
 </div>
 
 **Examples of good async methods:**
-- Prime number calculations
+
 - Large array sorting/filtering
 - Cryptographic operations (hashing, encryption)
 - Complex algorithms (graph traversal, pattern matching)
-- Heavy data transformations
-
-## Performance Comparison
-
-### Sync Method Performance
-
-```typescript
-export interface Spec extends NativeModule {
-  // blocks UI thread
-  slowCalculation(): number;
-}
-```
-
-```rust
-impl BadExampleSpec for BadExample {
-    fn slow_calculation(&mut self) -> Number {
-        // This will FREEZE the UI for `expensive_job` durations!
-        let res = expensive_job();
-        res
-    }
-}
-```
-
-```typescript
-console.log('Starting...');
-const result = BadExample.slowCalculation();  // UI frozen
-console.log('Done:', result);
-```
-
-### Async Method Performance
-
-```typescript
-export interface Spec extends NativeModule {
-  // Runs in separate thread
-  slowCalculation(): Promise<number>;
-}
-```
-
-```rust
-impl GoodExampleSpec for GoodExample {
-    fn slow_calculation(&mut self) -> Promise<Number> {
-        let res = expensive_job();
-        promise::resolve(res)
-    }
-}
-```
-
-```typescript
-console.log('Starting...');
-const result = await GoodExample.slowCalculation();  // UI stays responsive!
-console.log('Done:', result);
-```
-
-## Separate Thread Execution
-
-When implementing Promise methods, your Rust code runs in a **separate thread** (spawned by C++ layer):
-
-```rust
-fn process_data(&mut self, value: Number) -> Promise<Number> {
-    // This runs in a separate thread automatically
-    // Safe to do heavy computations here
-    let result = expensive_calculation(value);
-    promise::resolve(result)
-}
-
-fn compute_fibonacci(&mut self, n: Number) -> Promise<Number> {
-    // CPU-intensive recursive calculation
-    let result = fibonacci(n as u64);
-    promise::resolve(result as f64)
-}
-```
+- Heavy data processing
 
 ## Error Handling
 
 ### Sync Methods
 
-Sync methods typically use **panics** for errors (which crash the app):
+Sync methods typically use the `throw` macro (alias for `panic!`) for errors:
 
 ```rust
 fn divide(&mut self, a: Number, b: Number) -> Number {
     if b == 0.0 {
-        throw!("Division by zero");  // throw as JavaScript Error
+        throw!("Division by zero");
     }
     a / b
 }
@@ -242,7 +164,13 @@ try {
 
 ### Async Methods
 
-Async methods use **Promise rejections** for errors:
+Async methods use `promise::reject` utility function for errors:
+
+::: info
+
+You can also use the `throw!` macro in async methods for error handling
+
+:::
 
 ```rust
 fn get_user(&mut self, id: Number) -> Promise<User> {
@@ -250,8 +178,7 @@ fn get_user(&mut self, id: Number) -> Promise<User> {
         return promise::reject("Invalid user ID");
     }
 
-    // This runs in separate thread (managed by C++ layer)
-    match database.find(id) {
+    match source.find(id) {
         Some(user) => promise::resolve(user),
         None => promise::reject("User not found"),
     }
@@ -275,6 +202,6 @@ try {
 | **Returns** | `T` | `Promise<T>` |
 | **Duration** | < 16ms | Any duration |
 | **Heavy Work** | Avoid | Perfect for |
-| **Error Handling** | Panic | Both Panic and Promise rejection |
+| **Error Handling** | `throw!` | Both `throw!` and `promise::reject` |
 | **UI Impact** | Blocking | Non-blocking |
 | **Use Cases** | Math, formatting | Heavy compute, complex algorithms |

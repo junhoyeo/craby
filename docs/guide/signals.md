@@ -6,9 +6,8 @@ Signals enable one-way communication from native Rust code to JavaScript, allowi
 
 Signals are simple event notifications sent from Rust to JavaScript. Unlike method calls that go from JS to native, signals flow in the opposite direction—from native to JS.
 
-**Key characteristics:**
-- **One-way**: Native → JavaScript only
-- **No data payload**: Signals don't carry data (just trigger callbacks)
+- **One-way**: Rust → JavaScript only
+- **No data payload**: Signals don't carry data (they just trigger callbacks)
 - **Multiple listeners**: JavaScript can register multiple listeners for the same signal
 - **Asynchronous**: Signals are emitted asynchronously and don't block native code
 
@@ -33,7 +32,9 @@ export interface Spec extends NativeModule {
 ```
 
 ::: info Signal Names
+
 The property name (e.g., `onDataReceived`) becomes the signal name. Use descriptive names that clearly indicate when the signal is emitted.
+
 :::
 
 ## Emitting Signals from Rust
@@ -57,7 +58,7 @@ impl MyModuleSpec for MyModule {
 
 ### Generated Signal Enum
 
-Craby automatically generates a signal enum for your module:
+Craby automatically generates a Signal enum for your module:
 
 ```rust
 // Auto-generated
@@ -78,7 +79,7 @@ import { MyModule } from 'your-module';
 
 // Add a listener
 const cleanup = MyModule.onDataReceived(() => {
-  console.log('Data received from native!');
+  console.log('Callback invoked from native!');
 });
 
 // Remove the listener when done
@@ -101,30 +102,6 @@ MyModule.onProgress(() => {
 // Both listeners will be called when the signal is emitted
 ```
 
-### Using with React Hooks
-
-```tsx
-import { useEffect } from 'react';
-import { MyModule } from 'your-module';
-
-function MyComponent() {
-  useEffect(() => {
-    const cleanup = MyModule.onDataReceived(() => {
-      console.log('Data received!');
-    });
-
-    // Cleanup listener on unmount
-    return () => cleanup();
-  }, []);
-
-  return <View>...</View>;
-}
-```
-
 ## Limitations
 
-<div class="tossface">
-
-- ❌ Signals cannot carry data
-
-</div>
+Signals are designed to invoke JavaScript callback functions from Rust. As such, they cannot carry data payloads—they serve only as event notifications to trigger JavaScript callbacks.

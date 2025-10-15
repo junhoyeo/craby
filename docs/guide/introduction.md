@@ -10,9 +10,11 @@ This project is currently under development and is in early alpha. For more info
 
 ## Motivation
 
-React Native provides excellent **TurboModule** and **Codegen** capabilities. However, it requires using platform-specific languages (Kotlin/Java for Android, Objective-C/Swift for iOS) and goes through platform compatibility layers, which means it cannot match the performance of pure C++ TurboModules.
+React Native provides [TurboModule](https://reactnative.dev/docs/turbo-native-modules-introduction), a JSI (JavaScript Interface) integration layer built on C++. To support platform-specific languages (Kotlin/Java for Android, Objective-C/Swift for iOS), it implements compatibility layers like `ObjCTurboModule` and `JavaTurboModule`, which introduce some overhead compared to pure C++ implementations.
 
-Craby was created as an alternative solution to address these limitations. It aims to integrate seamlessly with pure C++ TurboModules using the Rust language. While platform-specific features are not available, Craby strives to be the best choice for maximum performance.
+Craby was created to address this performance gap by enabling direct integration with pure C++ TurboModules using [Rust](https://rust-lang.org). By bypassing platform compatibility layers and leveraging Rust/C++ FFI, it aims to deliver zero-overhead performance.
+
+For most use cases requiring platform-specific features (e.g., camera access, sensors, native UI components), TurboModule remains the better choice. However, when maximum performance is critical—such as efficient large-scale data processing, cryptographic operations, or real-time data parsing—Craby offers a compelling alternative.
 
 ### The Solution
 
@@ -30,7 +32,7 @@ Craby solves these problems by:
 Craby achieves superior performance through:
 - **Pure C++ Integration**: Direct integration with C++ TurboModule bypasses platform-specific layers (`ObjCTurboModule`, `JavaTurboModule`)
 - **Zero-Cost FFI**: Rust-to-C++ communication via [cxx](https://cxx.rs/) ensures zero-overhead interop with compile-time safety
-- **Template-Based Types**: User-defined types are processed at compile-time using C++ templates, eliminating runtime type conversion overhead
+- **Template-Based Types**: C++ templates provide type-safe, compile-time conversions between user-defined types across the TypeScript-Rust-C++ boundary
 
 ---
 
@@ -51,7 +53,7 @@ Never write boilerplate again. Craby analyzes your TypeScript specs and generate
 - Rust trait definitions
 - C++ bridging implementations
 - FFI layer code
-- Native build configurations (CMake, XCFramework)
+- Native build configurations (e.g., CMake, XCFramework)
 
 ### Type Safety
 
@@ -99,21 +101,21 @@ graph LR
 
 ## When to Use Craby
 
-Craby is ideal for:
+Ideal use cases:
 
 <div class="tossface">
 
-- ✅ Building high-performance native modules in Rust
-- ✅ Projects requiring complex data processing on native side
+- ✅ Performance-critical native modules (e.g., large-scale data processing, cryptographic operations, real-time parsing)
+- ✅ Building high-performance modules in Rust with type safety
 
 </div>
 
-Craby might not be the best fit for:
+Cannot be used for:
 
 <div class="tossface">
 
-- ❌ Simple native modules with minimal logic (native JS modules may suffice)
-- ❌ Modules requiring platform-specific APIs (use platform-specific modules instead)
+- ❌ Modules requiring platform-specific features (e.g., camera access, sensors, native UI components)
+- ❌ Modules requiring standard TurboModule capabilities (e.g., event emitters, platform context access)
 
 </div>
 

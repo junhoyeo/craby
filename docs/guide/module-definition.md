@@ -41,8 +41,8 @@ export interface Spec extends NativeModule {
   // Asynchronous method (returns Promise)
   calculatePrime(n: number): Promise<number>;
 
-  // Method with no return value
-  noop(): void;
+  // With user-defined types
+  getSomething(): Something;
 }
 ```
 
@@ -55,11 +55,6 @@ export interface User {
   name: string;
   age: number;
   email: string;
-}
-
-export interface Spec extends NativeModule {
-  createUser(name: string, age: number, email: string): User;
-  updateUser(user: User): User;
 }
 ```
 
@@ -79,18 +74,26 @@ export interface User {
 
 ## Code Generation
 
-When you run `crabygen`, Craby generates Rust code from your TypeScript spec:
+When you run `crabygen` command, Craby generates Rust code from your TypeScript spec:
 
 ### Generated Rust Trait
+
+
+  // Synchronous method
+  square(n: number): number;
+
+  // Asynchronous method (returns Promise)
+  calculatePrime(n: number): Promise<number>;
+
+  // With user-defined types
+  getSomething(): Something;
 
 ```rust
 // Auto-generated from TypeScript spec
 pub trait MyModuleSpec {
     fn square(&mut self, n: Number) -> Number;
-    fn calculate_prime(&mut self, n: Number) -> Promise<Number>;
-    fn noop(&mut self) -> Void;
-    fn create_user(&mut self, name: String, age: Number, email: String) -> User;
-    fn update_user(&mut self, user: User) -> User;
+    fn calculate_prime(&mut self, n: Number) -> Promise<User>;
+    fn get_something(&mut self) -> Something;
 }
 ```
 
@@ -120,60 +123,11 @@ impl MyModuleSpec for MyModule {
         promise::resolve(prime as f64)
     }
 
-    fn noop(&mut self) -> Void {
-        ()
-    }
-
-    fn create_user(&mut self, name: String, age: Number, email: String) -> User {
-        User { name, age, email }
-    }
-
-    fn update_user(&mut self, mut user: User) -> User {
-        user.name = user.name.to_uppercase();
-        user
+    fn get_something(&mut self) -> Something {
+        Something::default()
     }
 }
 ```
-
-## Naming Conventions
-
-Method and field names are automatically converted as `snake_case`:
-
-```typescript
-// TypeScript
-interface Profile {
-  name: string;
-  homeAddress: string;
-}
-
-export interface Spec extends NativeModule {
-  setUser(userId: number, profile: Profile): boolean;
-}
-```
-
-```rust
-// Generated Rust
-struct Profile {
-    name: String,
-    home_address: String,
-}
-
-pub trait MyModuleSpec {
-    fn get_user_name(&mut self, user_id: Number, profile: Profile) -> bool;
-}
-```
-
-## Supported Types
-
-Craby supports various TypeScript types. See the [Types](/guide/types) guide for detailed information:
-
-- **Primitives**: `number`, `string`, `boolean`, `void`
-- **Objects**: Custom interfaces
-- **Arrays**: `T[]`
-- **Enums**: String and numeric enums
-- **Nullable**: `T | null`
-- **Promises**: `Promise<T>`
-- **Signals**: `Signal`
 
 ## Stateful Modules
 
@@ -201,17 +155,6 @@ Storage.setData(123);
 Storage.getData(); // 123
 ```
 
-## Limitations
+## Supported Types
 
-### Unsupported Types
-
-Some TypeScript types are not supported:
-
-<div class="tossface">
-
-- ❌ Union types (except `T | null`)
-- ❌ Tuple types
-- ❌ Function types
-- ❌ Generic types (except `Promise` and `Signal`)
-
-</div>
+Craby supports various TypeScript types. see the [Types](/guide/types) guide.

@@ -8,19 +8,38 @@ Craby automatically converts types between TypeScript, Rust, and C++ at compile-
 
 | TypeScript | Rust | C++ |
 |------------|------|-----|
-| `boolean` | `Boolean` (alias for `bool`) | `bool` |
-| `number` | `Number` (alias for `f64`) | `double` |
-| `string` | `String` (alias for `std::string::String`) | `std::string` |
-| `object` | `struct` (custom struct) | `struct` (custom struct) |
-| `T[]` | `Array<T>` (alias for `std::vec::Vec<T>`) | `std::vector<T>` |
-| `T \| null` | `Nullable<T>` (custom struct) | `struct` (custom struct) |
-| `Promise<T>` | `Promise<T>` (alias for `std::result::Result<T, anyhow::Error>`) | `T` (Unwrap `Result<T>`) |
+| `boolean` | `bool` | `bool` |
+| `number` | `f64` | `double` |
+| `string` | `std::string::String` | `std::string` |
+| `object` | `struct` | `struct` |
+| `T[]` | `std::vec::Vec<T>` | `std::vector<T>` |
+| `T \| null` | `Nullable<T>` | `struct` |
+| `Promise<T>` | `std::result::Result<T, anyhow::Error>` | `T` (Unwrapped) |
 | `enum` | `enum` | `enum class` |
-| `void` | `Void` (alias for `()`) | `void` |
+| `void` | `()` | `void` |
 
-## Working with Primitives
+::: info
 
-### Number
+- **Object types** are generated as structs matching your TypeScript schema
+- **Nullable types** are generated using a pre-defined struct
+
+:::
+
+**Type Aliases**
+
+Craby provides type aliases to make Rust types more familiar to TypeScript developers:
+
+| Rust Type | Alias Type |
+|-----------|------------|
+| `bool` | `Boolean` |
+| `f64` | `Number` |
+| `std::string::String` | `String` |
+| `std::vec::Vec<T>` | `Array<T>` |
+| `std::result::Result<T, anyhow::Error>` | `Promise<T>` |
+| `()` | `Void` |
+
+
+## Number
 
 Numbers in TypeScript map to `f64` (64-bit float) in Rust.
 
@@ -40,7 +59,7 @@ impl CalculatorSpec for Calculator {
 }
 ```
 
-### String
+## String
 
 Strings are UTF-8 encoded and automatically converted between languages.
 
@@ -60,7 +79,7 @@ impl GreeterSpec for Greeter {
 }
 ```
 
-### Boolean
+## Boolean
 
 **TypeScript:**
 ```typescript
@@ -348,34 +367,6 @@ impl AsyncServiceSpec for AsyncService {
 
 See [Sync vs Async](/guide/sync-vs-async) for more details on async operations.
 
-## Type Constraints
+## Limitations
 
-### Supported
-
-<div class="tossface">
-
-- ✅ Primitive types (number, string, boolean)
-- ✅ Objects with named properties
-- ✅ Arrays (`T[]`)
-- ✅ Nullable types (`T | null`)
-- ✅ Promises (`Promise<T>`)
-- ✅ Enums (string and numeric)
-- ✅ Nested objects and arrays
-
-</div>
-
-### Not Supported
-
-Cases not listed in the supported types are not supported.
-
-<div class="tossface">
-
-- ❌ Union types (except `T | null`)
-- ❌ Intersection types
-- ❌ Tuple types
-- ❌ Function types
-- ❌ Generic types
-- ❌ `any`, `unknown`, `never`
-- ❌ Class types
-
-</div>
+Craby supports fewer types than standard TurboModules to maintain simplicity and focus on performance-critical use cases. Types not listed in the supported types table are not available.
