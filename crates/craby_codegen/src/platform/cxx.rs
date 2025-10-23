@@ -287,11 +287,24 @@ impl Method {
         for (idx, param) in self.params.iter().enumerate() {
             let arg_ref = cxx_arg_ref(idx);
             let arg_var = cxx_arg_var(idx);
-            let from_js = param.type_annotation.as_cxx_from_js(mod_name, &arg_ref)?;
+
+            // `rust::Str` holds a reference to `std::string`.
+            // To avoid dangling pointers, the converted `std::string` is retained within the scope for the lifetime of the reference.
             let from_js = if let TypeAnnotation::String = &param.type_annotation {
-                from_js.expr.replace("rust::String", "rust::Str")
+                // Capture the converted `std::string` within the scope of the reference
+                let str_var = format!("{}$raw", arg_var);
+                args_decls.push(format!(
+                    "auto {} = {}.asString(rt).utf8(rt);",
+                    str_var, arg_ref
+                ));
+
+                // Convert the `std::string` to `rust::Str`
+                format!("rust::Str({}.data(), {}.size())", str_var, str_var)
             } else {
-                from_js.expr
+                param
+                    .type_annotation
+                    .as_cxx_from_js(mod_name, &arg_ref)?
+                    .expr
             };
             args.push(arg_var.clone());
             args_decls.push(format!("auto {} = {};", arg_var, from_js));
@@ -332,16 +345,16 @@ impl Method {
                 // ```cpp
                 // react::AsyncPromise<T> promise(rt, callInvoker);
                 //
-                // std::thread([promise, arg0, arg1, arg2]() mutable {{
-                //   try {{
+                // thisModule.threadPool_->enqueue([promise, arg0, arg1, arg2]() mutable {
+                //   try {
                 //     auto ret = craby::mymodule::myFunc(*it_, arg0, arg1, arg2);
                 //     promise.resolve(ret);
-                //   }} catch (const jsi::JSError &err) {{
+                //   } catch (const jsi::JSError &err) {
                 //     promise.reject(err.getMessage());
-                //   }} catch (const std::exception &err) {{
+                //   } catch (const std::exception &err) {
                 //     promise.reject(errorMessage(err));
-                //   }}
-                // }}).detach();
+                //   }
+                // });
                 //
                 // return promise;
                 // ```
@@ -349,7 +362,7 @@ impl Method {
                     r#"
                     react::AsyncPromise<{ret_type}> promise(rt, callInvoker);
 
-                    std::thread([{bind_args}]() mutable {{
+                    thisModule.threadPool_->enqueue([{bind_args}]() mutable {{
                       try {{
                     {ret_stmts}
                       }} catch (const jsi::JSError &err) {{
@@ -357,7 +370,7 @@ impl Method {
                       }} catch (const std::exception &err) {{
                         promise.reject(errorMessage(err));
                       }}
-                    }}).detach();
+                    }});
 
                     return {ret};"#,
                     bind_args = bind_args.join(", "),
@@ -605,7 +618,9 @@ impl Schema {
             let alias_spec = type_annotation.as_object().unwrap();
 
             for prop in &alias_spec.props {
-                if let nullable_type @ TypeAnnotation::Nullable(type_annotation) = &prop.type_annotation {
+                if let nullable_type @ TypeAnnotation::Nullable(type_annotation) =
+                    &prop.type_annotation
+                {
                     let key = nullable_type.as_cxx_type(&self.module_name)?;
 
                     if nullable_bridging_templates.contains_key(&key) {

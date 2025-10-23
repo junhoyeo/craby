@@ -3,7 +3,6 @@
 #include "cxx.h"
 #include "bridging-generated.hpp"
 #include "utils.hpp"
-#include <thread>
 #include <react/bridging/Bridging.h>
 
 using namespace facebook;
@@ -25,7 +24,7 @@ CxxCrabyTestModule::CxxCrabyTestModule(
     craby::bridging::createCrabyTest(reinterpret_cast<uintptr_t>(this)).into_raw(),
     [](craby::bridging::CrabyTest *ptr) { rust::Box<craby::bridging::CrabyTest>::from_raw(ptr); }
   );
-
+  threadPool_ = std::make_shared<ThreadPool>(10);
   methodMap_["arrayMethod"] = MethodMetadata{1, &CxxCrabyTestModule::arrayMethod};
   methodMap_["booleanMethod"] = MethodMetadata{1, &CxxCrabyTestModule::booleanMethod};
   methodMap_["camelMethod"] = MethodMetadata{0, &CxxCrabyTestModule::camelMethod};
@@ -44,19 +43,34 @@ CxxCrabyTestModule::CxxCrabyTestModule(
 }
 
 CxxCrabyTestModule::~CxxCrabyTestModule() {
+  invalidate();
+}
+
+void CxxCrabyTestModule::invalidate() {
+  if (invalidated_.exchange(true)) {
+    return;
+  }
+
+  invalidated_.store(true);
+  listenersMap_.clear();
+
+  // Unregister from signal manager
   uintptr_t id = reinterpret_cast<uintptr_t>(this);
   auto& manager = craby::signals::SignalManager::getInstance();
   manager.unregisterDelegate(id);
+
+  // Shutdown thread pool
+  threadPool_->shutdown();
 }
 
 void CxxCrabyTestModule::emit(std::string name) {
   std::vector<std::shared_ptr<facebook::jsi::Function>> listeners;
   {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(listenersMutex_);
     auto it = listenersMap_.find(name);
     if (it != listenersMap_.end()) {
-      for (const auto& fn : it->second) {
-        listeners.push_back(fn);
+      for (auto &[_, listener] : it->second) {
+        listeners.push_back(listener);
       }
     }
   }
@@ -302,7 +316,7 @@ jsi::Value CxxCrabyTestModule::promiseMethod(jsi::Runtime &rt,
     auto arg0 = react::bridging::fromJs<double>(rt, args[0], callInvoker);
     react::AsyncPromise<double> promise(rt, callInvoker);
 
-    std::thread([it_, promise, arg0]() mutable {
+    thisModule.threadPool_->enqueue([it_, promise, arg0]() mutable {
       try {
         auto ret = craby::bridging::promiseMethod(*it_, arg0);
         promise.resolve(ret);
@@ -311,7 +325,7 @@ jsi::Value CxxCrabyTestModule::promiseMethod(jsi::Runtime &rt,
       } catch (const std::exception &err) {
         promise.reject(errorMessage(err));
       }
-    }).detach();
+    });
 
     return react::bridging::toJs(rt, promise);
   } catch (const jsi::JSError &err) {
@@ -381,7 +395,8 @@ jsi::Value CxxCrabyTestModule::stringMethod(jsi::Runtime &rt,
       throw jsi::JSError(rt, "Expected 1 argument");
     }
 
-    auto arg0 = react::bridging::fromJs<rust::Str>(rt, args[0], callInvoker);
+    auto arg0$raw = args[0].asString(rt).utf8(rt);
+    auto arg0 = rust::Str(arg0$raw.data(), arg0$raw.size());
     auto ret = craby::bridging::stringMethod(*it_, arg0);
 
     return react::bridging::toJs(rt, ret);
@@ -430,33 +445,37 @@ jsi::Value CxxCrabyTestModule::onSignal(jsi::Runtime &rt,
 
     auto callback = args[0].asObject(rt).asFunction(rt);
     auto callbackRef = std::make_shared<jsi::Function>(std::move(callback));
+    auto id = thisModule.nextListenerId_.fetch_add(1);
     auto name = "onSignal";
     
-    if (listenersMap_.find(name) == listenersMap_.end()) {
-      listenersMap_[name] = std::vector<std::shared_ptr<jsi::Function>>();
+    if (thisModule.listenersMap_.find(name) == thisModule.listenersMap_.end()) {
+      thisModule.listenersMap_[name] = std::unordered_map<size_t, std::shared_ptr<facebook::jsi::Function>>();
     }
-    listenersMap_[name].push_back(callbackRef);
+
+    {
+      std::lock_guard<std::mutex> lock(thisModule.listenersMutex_);
+      thisModule.listenersMap_[name].emplace(id, callbackRef);
+    }
+
+    auto modulePtr = &thisModule;
+    auto cleanup = [modulePtr, name, id] {
+      std::lock_guard<std::mutex> lock(modulePtr->listenersMutex_);
+      auto eventMap = modulePtr->listenersMap_.find(name);
+      if (eventMap != modulePtr->listenersMap_.end()) {
+        auto it = eventMap->second.find(id);
+        if (it != eventMap->second.end()) {
+          eventMap->second.erase(it);
+        }
+      }
+      return jsi::Value::undefined();
+    };
 
     return jsi::Function::createFromHostFunction(
       rt,
       jsi::PropNameID::forAscii(rt, "cleanup"),
       0,
-      [callbackRef, name](jsi::Runtime& rt, const jsi::Value&, const jsi::Value*, size_t) -> jsi::Value {
-        std::lock_guard<std::mutex> lock(mutex_);
-        auto& listeners = listenersMap_[name];
-        listeners.erase(
-          std::remove_if(listeners.begin(), listeners.end(),
-          [&callbackRef](const std::shared_ptr<jsi::Function>& fn) {
-            return fn.get() == callbackRef.get();
-          }),
-          listeners.end()
-        );
-
-        if (listeners.empty()) {
-          listenersMap_.erase(name);
-        }
-
-        return jsi::Value::undefined();
+      [cleanup](jsi::Runtime& rt, const jsi::Value&, const jsi::Value*, size_t) -> jsi::Value {
+        return cleanup();
       }
     );
   } catch (const jsi::JSError &err) {
