@@ -1,9 +1,12 @@
 use std::{collections::BTreeMap, path::PathBuf};
 
-use crate::utils::{
-    git::{clone_template, is_git_available},
-    template::render_template,
-    terminal::with_spinner,
+use crate::{
+    commands::init::{npm::get_latest_version, react_native::setup_react_native_project},
+    utils::{
+        git::{clone_template, is_git_available},
+        template::render_template,
+        terminal::with_spinner,
+    },
 };
 use chrono::Datelike;
 use craby_build::setup::setup_project;
@@ -12,9 +15,13 @@ use craby_common::{
     env::is_rustup_installed,
     utils::string::{flat_case, kebab_case, pascal_case, snake_case},
 };
+use indoc::formatdoc;
 use inquire::{validator::Validation, Text};
 use log::{debug, info, warn};
 use owo_colors::OwoColorize;
+
+const STATUS_OK: &str = "✓";
+const STATUS_WARN: &str = "!";
 
 pub struct InitOptions {
     pub cwd: PathBuf,
@@ -73,6 +80,8 @@ pub fn perform(opts: InitOptions) -> anyhow::Result<()> {
         .with_validator(url_validator)
         .prompt()?;
 
+    println!();
+
     // CxxFastCalculatorModule
     let cxx_name = cxx_mod_cls_name(&crate_name);
 
@@ -92,8 +101,26 @@ pub fn perform(opts: InitOptions) -> anyhow::Result<()> {
     let objc_provider = objc_mod_provider_name(&crate_name);
     let current_year = chrono::Local::now().year().to_string();
 
+    let mut pkg_version = String::new();
+    with_spinner(
+        "Getting latest package version...",
+        |_| match get_latest_version() {
+            Ok(res) => {
+                pkg_version = res;
+                Ok(())
+            }
+            Err(e) => anyhow::bail!("Failed to get latest package version: {}", e),
+        },
+    )?;
+    info!(
+        "{} Found latest package version: {}",
+        STATUS_OK.bold().green(),
+        pkg_version
+    );
+
     let template_data = BTreeMap::from([
         ("pkg_name", opts.pkg_name.as_str()),
+        ("pkg_version", pkg_version.as_str()),
         ("description", description.as_str()),
         ("author_name", author_name.as_str()),
         ("author_email", author_email.as_str()),
@@ -108,34 +135,64 @@ pub fn perform(opts: InitOptions) -> anyhow::Result<()> {
         ("year", current_year.as_str()),
     ]);
 
-    with_spinner("⏳ Cloning template...", |_| {
-        let template_dir = clone_template()?;
-        debug!(
-            "Rendering template... ({:?} -> {:?})",
-            template_dir, dest_dir
-        );
-        render_template(&dest_dir, &template_dir, &template_data)?;
+    with_spinner("Cloning template...", |_| match clone_template() {
+        Ok(template_dir) => {
+            debug!(
+                "Rendering template... ({:?} -> {:?})",
+                template_dir, dest_dir
+            );
+            render_template(&dest_dir, &template_dir, &template_data)?;
+            Ok(())
+        }
+        Err(e) => anyhow::bail!("Failed to clone template: {}", e),
+    })?;
+    info!("{} Template generation completed", STATUS_OK.bold().green());
+
+    with_spinner("Setting up React Native project...", |_| {
+        if let Err(e) = setup_react_native_project(&dest_dir, &opts.pkg_name) {
+            anyhow::bail!("Failed to setup React Native project: {}", e);
+        }
         Ok(())
     })?;
-    info!("✅ Template generation completed");
+    info!(
+        "{} React Native project setup completed",
+        STATUS_OK.bold().green()
+    );
 
     if is_rustup_installed() {
-        with_spinner("⚙️ Setting up the Rust project, please wait...", |_| {
-            setup_project()?;
+        with_spinner("Setting up the Rust project, please wait...", |_| {
+            if let Err(e) = setup_project() {
+                anyhow::bail!("Failed to setup Rust project: {}", e);
+            }
             Ok(())
         })?;
-        info!("✅ Rust project setup completed");
+        info!("{} Rust project setup completed", STATUS_OK.bold().green());
     } else {
         warn!(
-            "⚠️ Please install `rustup` to setup the Rust project for Craby\n\nVisit the Rust website: {}",
+            "{} Please install `rustup` to setup the Rust project for Craby\n\nVisit the Rust website: {}",
+            STATUS_WARN.bold().yellow(),
             "https://www.rust-lang.org/tools/install".underline()
         );
     }
 
-    info!(
-        "🎉 Craby project initialized successfully\n\nRun `{}` to generate Rust code from your native module specifications",
-        "npx crabygen".green().underline()
-    );
+    let outro = formatdoc! {
+        r#"
+        {check_mark} Craby project initialized successfully!
+
+        {get_started}
+
+        {get_started_cmd}
+
+        Run `{codegen_cmd}` to generate Rust code from your native module specifications
+        For more information, see the Craby documentation: {docs_url}
+        "#,
+        check_mark = STATUS_OK.bold().green(),
+        get_started = "Get started with your Craby project:".yellow(),
+        get_started_cmd = format!("$ cd {} && yarn install", opts.pkg_name).dimmed(),
+        codegen_cmd = "npx crabygen".purple().underline(),
+        docs_url = "https://craby.rs".dimmed().underline()
+    };
+    info!("{}", outro);
 
     Ok(())
 }
