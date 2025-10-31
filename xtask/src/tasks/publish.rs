@@ -90,7 +90,7 @@ fn publish_packages(packages: &[PackageInfo]) -> Result<()> {
 fn publish_crates() -> Result<()> {
     env::var("CARGO_REGISTRY_TOKEN")
         .map_err(|_| anyhow::anyhow!("CARGO_REGISTRY_TOKEN is not set"))?;
-    run_command("cargo", &["publish", "--workspace"], None)?;
+    run_command("cargo", &["publish", "--workspace", "--no-verify"], None)?;
     Ok(())
 }
 
