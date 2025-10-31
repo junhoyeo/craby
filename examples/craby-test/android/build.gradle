@@ -22,7 +22,6 @@ buildscript {
 
 apply plugin: "com.android.library"
 apply plugin: "kotlin-android"
-
 apply plugin: "com.facebook.react"
 
 def getExtOrIntegerDefault(name) {
@@ -30,7 +29,7 @@ def getExtOrIntegerDefault(name) {
 }
 
 android {
-  namespace "com.crabytest"
+  namespace "rs.craby.crabytest"
 
   compileSdkVersion getExtOrIntegerDefault("compileSdkVersion")
 
@@ -62,27 +61,6 @@ android {
     }
   }
 
-  packagingOptions {
-    excludes = [
-      "META-INF",
-      "META-INF/**",
-      "**/libc++_shared.so",
-      "**/libfbjni.so",
-      "**/libjsi.so",
-      "**/libfolly_json.so",
-      "**/libfolly_runtime.so",
-      "**/libglog.so",
-      "**/libhermes.so",
-      "**/libhermes-executor-debug.so",
-      "**/libhermes_executor.so",
-      "**/libreactnative.so",
-      "**/libreactnativejni.so",
-      "**/libturbomodulejsijni.so",
-      "**/libreact_nativemodule_core.so",
-      "**/libjscexecutor.so"
-    ]
-  }
-
   buildFeatures {
     buildConfig true
     prefab true
@@ -110,15 +88,6 @@ android {
     sourceCompatibility JavaVersion.VERSION_1_8
     targetCompatibility JavaVersion.VERSION_1_8
   }
-
-  sourceSets {
-    main {
-      java.srcDirs += [
-        "generated/java",
-        "generated/jni"
-      ]
-    }
-  }
 }
 
 repositories {
@@ -137,5 +106,5 @@ dependencies {
 react {
   jsRootDir = file("../src/")
   libraryName = "CrabyTest_stub"
-  codegenJavaPackageName = "com.crabytest"
+  codegenJavaPackageName = "rs.craby.crabytest"
 }
