@@ -240,12 +240,11 @@ impl CxxTemplate {
                         auto id = thisModule.nextListenerId_.fetch_add(1);
                         auto name = "{signal_name}";
 
-                        if (thisModule.listenersMap_.find(name) == thisModule.listenersMap_.end()) {{
-                          thisModule.listenersMap_[name] = std::unordered_map<size_t, std::shared_ptr<facebook::jsi::Function>>();
-                        }}
-
                         {{
                           std::lock_guard<std::mutex> lock(thisModule.listenersMutex_);
+                          if (thisModule.listenersMap_.find(name) == thisModule.listenersMap_.end()) {{
+                            thisModule.listenersMap_[name] = std::unordered_map<size_t, std::shared_ptr<facebook::jsi::Function>>();
+                          }}
                           thisModule.listenersMap_[name].emplace(id, callbackRef);
                         }}
 
@@ -350,7 +349,10 @@ impl CxxTemplate {
               }}
 
               invalidated_.store(true);
-              listenersMap_.clear();
+              {{
+                std::lock_guard<std::mutex> lock(listenersMutex_);
+                listenersMap_.clear();
+              }}
             
             {unregister_stmts}
 

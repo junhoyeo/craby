@@ -40,7 +40,10 @@ void CxxCalculatorModule::invalidate() {
   }
 
   invalidated_.store(true);
-  listenersMap_.clear();
+  {
+    std::lock_guard<std::mutex> lock(listenersMutex_);
+    listenersMap_.clear();
+  }
 
   // No signals
 
