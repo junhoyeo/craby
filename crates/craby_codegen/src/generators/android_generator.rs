@@ -58,7 +58,9 @@ impl AndroidTemplate {
     /// extern "C"
     /// JNIEXPORT void JNICALL
     /// Java_com_mymodule_MyTestModulePackage_nativeSetDataPath(JNIEnv *env, jclass clazz, jstring jDataPath) {
-    ///     auto dataPath = std::string(env->GetStringUTFChars(jDataPath, nullptr));
+    ///     const char* cDataPath = env->GetStringUTFChars(jDataPath, nullptr);
+    ///     auto dataPath = std::string(cDataPath);
+    ///     env->ReleaseStringUTFChars(jDataPath, cDataPath);
     ///     craby::myproject::modules::MyTestModule::dataPath = dataPath;
     /// }
     /// ```
@@ -113,7 +115,9 @@ impl AndroidTemplate {
             extern "C"
             JNIEXPORT void JNICALL
             {jni_fn_name}(JNIEnv *env, jclass clazz, jstring jDataPath) {{
-              auto dataPath = std::string(env->GetStringUTFChars(jDataPath, nullptr));
+              const char* cDataPath = env->GetStringUTFChars(jDataPath, nullptr);
+              auto dataPath = std::string(cDataPath);
+              env->ReleaseStringUTFChars(jDataPath, cDataPath);
             {cxx_prepares}
             }}"#,
             cxx_includes = cxx_includes.join("\n"),
